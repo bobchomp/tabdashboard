@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Custom New Tab Dashboard",
+  "version": "0.1.0",
+  "description": "A personal, local-first replacement for Firefox's New Tab page.",
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": ["storage"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "newtab-dashboard@local.ext",
+      "strict_min_version": "109.0"
+    }
+  }
+}
