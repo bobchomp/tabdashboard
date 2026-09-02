@@ -1,5 +1,14 @@
 const STORAGE_KEY = "quickLinks";
-const TILE_COLORS = ["#7c8cff", "#ff8a5c", "#4dd0a7", "#ff6b9d", "#ffc65c", "#5cc8ff"];
+const TILE_PALETTE = [
+  { bg: "#C9B8F0", text: "#4A3E80" },
+  { bg: "#B8ECD3", text: "#2B6B4D" },
+  { bg: "#FFD3B0", text: "#8A5A2B" },
+  { bg: "#FBE7A1", text: "#8A6A12" },
+  { bg: "#F7C6DE", text: "#99416B" },
+];
+
+const ADD_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+const EDIT_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>`;
 
 const linksGrid = document.getElementById("links");
 const searchForm = document.getElementById("search-form");
@@ -12,6 +21,7 @@ const linkTitleInput = document.getElementById("link-title");
 const linkUrlInput = document.getElementById("link-url");
 const linkDeleteBtn = document.getElementById("link-delete");
 const linkCancelBtn = document.getElementById("link-cancel");
+const linkCloseBtn = document.getElementById("link-close");
 
 let links = [];
 let editingId = null;
@@ -26,12 +36,12 @@ async function saveLinks() {
   await browser.storage.local.set({ [STORAGE_KEY]: links });
 }
 
-function colorFor(seed) {
+function paletteFor(seed) {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
   }
-  return TILE_COLORS[hash % TILE_COLORS.length];
+  return TILE_PALETTE[hash % TILE_PALETTE.length];
 }
 
 function normalizeUrl(raw) {
@@ -48,9 +58,12 @@ function render() {
     tile.className = "link-tile";
     tile.href = link.url;
 
+    const palette = link.colorBg ? { bg: link.colorBg, text: link.colorText } : paletteFor(link.title || link.url);
+
     const icon = document.createElement("div");
     icon.className = "tile-icon";
-    icon.style.background = link.color;
+    icon.style.background = palette.bg;
+    icon.style.color = palette.text;
     icon.textContent = (link.title || link.url).trim().charAt(0).toUpperCase();
 
     const label = document.createElement("div");
@@ -60,7 +73,8 @@ function render() {
     const editBtn = document.createElement("button");
     editBtn.className = "tile-edit";
     editBtn.type = "button";
-    editBtn.textContent = "✎";
+    editBtn.innerHTML = EDIT_ICON;
+    editBtn.setAttribute("aria-label", "Edit link");
     editBtn.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -74,7 +88,8 @@ function render() {
   const addTile = document.createElement("button");
   addTile.type = "button";
   addTile.className = "add-tile";
-  addTile.textContent = "+";
+  addTile.innerHTML = ADD_ICON;
+  addTile.setAttribute("aria-label", "Add link");
   addTile.addEventListener("click", () => openDialog(null));
   linksGrid.appendChild(addTile);
 }
@@ -100,11 +115,13 @@ linkForm.addEventListener("submit", async (event) => {
     existing.title = title;
     existing.url = url;
   } else {
+    const palette = paletteFor(title || url);
     links.push({
       id: crypto.randomUUID(),
       title,
       url,
-      color: colorFor(title || url),
+      colorBg: palette.bg,
+      colorText: palette.text,
     });
   }
 
@@ -121,6 +138,7 @@ linkDeleteBtn.addEventListener("click", async () => {
 });
 
 linkCancelBtn.addEventListener("click", () => linkDialog.close());
+linkCloseBtn.addEventListener("click", () => linkDialog.close());
 
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
