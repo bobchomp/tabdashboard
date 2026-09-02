@@ -1,4 +1,15 @@
 const STORAGE_KEY = "quickLinks";
+const SETTINGS_KEY = "settings";
+const USER_NAME = "Ross";
+
+const SEARCH_ENGINES = {
+  duckduckgo: { label: "DuckDuckGo", url: "https://duckduckgo.com/?q=" },
+  google: { label: "Google", url: "https://www.google.com/search?q=" },
+  bing: { label: "Bing", url: "https://www.bing.com/search?q=" },
+  ecosia: { label: "Ecosia", url: "https://www.ecosia.org/search?q=" },
+};
+const DEFAULT_SETTINGS = { searchEngine: "duckduckgo" };
+
 const TILE_PALETTE = [
   { bg: "#C9B8F0", text: "#4A3E80" },
   { bg: "#B8ECD3", text: "#2B6B4D" },
@@ -23,8 +34,17 @@ const linkDeleteBtn = document.getElementById("link-delete");
 const linkCancelBtn = document.getElementById("link-cancel");
 const linkCloseBtn = document.getElementById("link-close");
 
+const greetingEl = document.getElementById("greeting");
+const settingsBtn = document.getElementById("settings-btn");
+const settingsDialog = document.getElementById("settings-dialog");
+const settingsForm = document.getElementById("settings-form");
+const settingsCancelBtn = document.getElementById("settings-cancel");
+const settingsCloseBtn = document.getElementById("settings-close");
+const searchEngineSelect = document.getElementById("search-engine-select");
+
 let links = [];
 let editingId = null;
+let settings = { ...DEFAULT_SETTINGS };
 
 async function loadLinks() {
   const result = await browser.storage.local.get(STORAGE_KEY);
@@ -34,6 +54,27 @@ async function loadLinks() {
 
 async function saveLinks() {
   await browser.storage.local.set({ [STORAGE_KEY]: links });
+}
+
+async function loadSettings() {
+  const result = await browser.storage.local.get(SETTINGS_KEY);
+  settings = { ...DEFAULT_SETTINGS, ...(result[SETTINGS_KEY] || {}) };
+  applySettings();
+}
+
+async function saveSettings() {
+  await browser.storage.local.set({ [SETTINGS_KEY]: settings });
+}
+
+function applySettings() {
+  const engine = SEARCH_ENGINES[settings.searchEngine] || SEARCH_ENGINES[DEFAULT_SETTINGS.searchEngine];
+  searchInput.placeholder = `Search ${engine.label} or enter address`;
+}
+
+function renderGreeting() {
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  greetingEl.textContent = `${greeting}, ${USER_NAME}`;
 }
 
 function paletteFor(seed) {
@@ -140,6 +181,22 @@ linkDeleteBtn.addEventListener("click", async () => {
 linkCancelBtn.addEventListener("click", () => linkDialog.close());
 linkCloseBtn.addEventListener("click", () => linkDialog.close());
 
+settingsBtn.addEventListener("click", () => {
+  searchEngineSelect.value = settings.searchEngine;
+  settingsDialog.showModal();
+});
+
+settingsForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  settings.searchEngine = searchEngineSelect.value;
+  await saveSettings();
+  applySettings();
+  settingsDialog.close();
+});
+
+settingsCancelBtn.addEventListener("click", () => settingsDialog.close());
+settingsCloseBtn.addEventListener("click", () => settingsDialog.close());
+
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const query = searchInput.value.trim();
@@ -151,8 +208,11 @@ searchForm.addEventListener("submit", (event) => {
   if (looksLikeUrl) {
     window.location.href = normalizeUrl(query);
   } else {
-    window.location.href = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+    const engine = SEARCH_ENGINES[settings.searchEngine] || SEARCH_ENGINES[DEFAULT_SETTINGS.searchEngine];
+    window.location.href = `${engine.url}${encodeURIComponent(query)}`;
   }
 });
 
+renderGreeting();
+loadSettings();
 loadLinks();

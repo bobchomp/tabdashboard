@@ -64,6 +64,37 @@ body {
   gap: 48px;
 }
 
+.greeting {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+}
+
+.settings-btn {
+  position: fixed;
+  top: 28px;
+  right: 28px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface);
+  color: var(--text-dim);
+  box-shadow: 0 8px 20px var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+.settings-btn:hover {
+  box-shadow: 0 12px 26px var(--shadow-strong);
+  transform: translateY(-2px) rotate(20deg);
+}
+
 .search {
   width: 100%;
 }
@@ -267,6 +298,26 @@ dialog input {
 }
 
 dialog input:focus {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+dialog select {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--field-fill);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  outline: none;
+  cursor: pointer;
+}
+
+dialog select:focus {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
