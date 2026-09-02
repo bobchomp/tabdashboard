@@ -10,6 +10,12 @@ const SEARCH_ENGINES = {
 };
 const DEFAULT_SETTINGS = { searchEngine: "duckduckgo" };
 
+const NEWS_FEED_URL = "https://feeds.bbci.co.uk/news/rss.xml";
+const NEWS_CACHE_KEY = "newsCache";
+const NEWS_CACHE_MS = 15 * 60 * 1000;
+const NEWS_HEADLINE_COUNT = 12;
+const NEWS_SCROLL_PX_PER_SEC = 55;
+
 const TILE_PALETTE = [
   { bg: "#C9B8F0", text: "#4A3E80" },
   { bg: "#B8ECD3", text: "#2B6B4D" },
@@ -22,6 +28,7 @@ const ADD_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" st
 const EDIT_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>`;
 
 const clockEls = document.querySelectorAll("[data-clock]");
+const newsTrack = document.getElementById("news-track");
 
 const linksGrid = document.getElementById("links");
 const searchForm = document.getElementById("search-form");
@@ -90,6 +97,77 @@ function renderClocks() {
     });
     el.querySelector(".clock-time").textContent = time;
   }
+}
+
+async function getHeadlines() {
+  const cached = (await browser.storage.local.get(NEWS_CACHE_KEY))[NEWS_CACHE_KEY];
+  if (cached && Date.now() - cached.fetchedAt < NEWS_CACHE_MS) {
+    return cached.headlines;
+  }
+
+  const response = await fetch(NEWS_FEED_URL);
+  const xml = new DOMParser().parseFromString(await response.text(), "application/xml");
+  const headlines = [...xml.querySelectorAll("item")]
+    .slice(0, NEWS_HEADLINE_COUNT)
+    .map((item) => ({
+      title: item.querySelector("title")?.textContent?.trim() ?? "",
+      link: item.querySelector("link")?.textContent?.trim() ?? "",
+    }))
+    .filter((headline) => headline.title && headline.link);
+
+  await browser.storage.local.set({ [NEWS_CACHE_KEY]: { fetchedAt: Date.now(), headlines } });
+  return headlines;
+}
+
+function buildNewsRun(headlines) {
+  const run = document.createDocumentFragment();
+  headlines.forEach((headline, index) => {
+    const link = document.createElement("a");
+    link.className = "news-item";
+    link.href = headline.link;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = headline.title;
+    run.appendChild(link);
+
+    if (index < headlines.length - 1) {
+      const dot = document.createElement("span");
+      dot.className = "news-dot";
+      dot.textContent = "•";
+      dot.setAttribute("aria-hidden", "true");
+      run.appendChild(dot);
+    }
+  });
+  return run;
+}
+
+async function renderNews() {
+  let headlines;
+  try {
+    headlines = await getHeadlines();
+  } catch {
+    newsTrack.textContent = "Unable to load BBC headlines right now.";
+    return;
+  }
+
+  if (!headlines.length) {
+    newsTrack.textContent = "Unable to load BBC headlines right now.";
+    return;
+  }
+
+  newsTrack.innerHTML = "";
+  newsTrack.appendChild(buildNewsRun(headlines));
+  const spacer = document.createElement("span");
+  spacer.className = "news-dot";
+  spacer.textContent = "•";
+  spacer.setAttribute("aria-hidden", "true");
+  newsTrack.appendChild(spacer);
+  newsTrack.appendChild(buildNewsRun(headlines));
+
+  requestAnimationFrame(() => {
+    const runWidth = newsTrack.scrollWidth / 2;
+    newsTrack.style.animationDuration = `${runWidth / NEWS_SCROLL_PX_PER_SEC}s`;
+  });
 }
 
 function paletteFor(seed) {
@@ -233,3 +311,4 @@ renderClocks();
 setInterval(renderClocks, 30_000);
 loadSettings();
 loadLinks();
+renderNews();

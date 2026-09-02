@@ -1,8 +1,10 @@
 # Custom New Tab Dashboard
 
-A personal Firefox New Tab replacement: a search bar and an editable quick-links
-grid, stored locally via `browser.storage.local`. Plain HTML/CSS/JS, no build
-step, no external requests.
+A personal Firefox New Tab replacement: a search bar, an editable quick-links
+grid, a world clock, and a live BBC News ticker, stored locally via
+`browser.storage.local`. Plain HTML/CSS/JS, no build step. The only external
+request it makes is fetching BBC's public RSS feed for the news ticker
+(cached ~15 minutes); everything else is local.
 
 ## Try it out (temporary install)
 
@@ -34,7 +36,9 @@ Mozilla's free **unlisted / self-distribution** signing:
    prompt to install it permanently.
 5. Future updates: bump `"version"` in `manifest.json`, re-zip, and re-submit
    through the same listing page — Firefox will treat it as an update if the
-   `gecko.id` in `manifest.json` stays the same.
+   `gecko.id` in `manifest.json` stays the same. A version that adds a new
+   `host_permissions` entry (like the BBC feed access added for the news
+   ticker) will prompt you to accept the new permission on update.
 
 Alternatively, `web-ext` (Mozilla's CLI, `npm install -g web-ext`) can drive
 steps 1–4 for you: `web-ext sign --api-key=... --api-secret=...` using an API
