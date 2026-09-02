@@ -439,11 +439,21 @@ dialog button.danger {
 .news-logo {
   flex-shrink: 0;
   width: 140px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  border: none;
   border-right: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.news-logo:hover {
+  background: var(--field-fill);
 }
 
 .news-logo span {
