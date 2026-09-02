@@ -121,7 +121,8 @@ async function renderNews() {
   let headlines;
   try {
     headlines = await browser.runtime.sendMessage({ type: "get-headlines" });
-  } catch {
+  } catch (error) {
+    console.error("[news] sendMessage failed:", error);
     newsTrack.textContent = "Unable to load BBC headlines right now.";
     return;
   }
