@@ -10,10 +10,6 @@ const SEARCH_ENGINES = {
 };
 const DEFAULT_SETTINGS = { searchEngine: "duckduckgo" };
 
-const NEWS_FEED_URL = "https://feeds.bbci.co.uk/news/rss.xml";
-const NEWS_CACHE_KEY = "newsCache";
-const NEWS_CACHE_MS = 15 * 60 * 1000;
-const NEWS_HEADLINE_COUNT = 12;
 const NEWS_SCROLL_PX_PER_SEC = 55;
 
 const TILE_PALETTE = [
@@ -99,26 +95,6 @@ function renderClocks() {
   }
 }
 
-async function getHeadlines() {
-  const cached = (await browser.storage.local.get(NEWS_CACHE_KEY))[NEWS_CACHE_KEY];
-  if (cached && Date.now() - cached.fetchedAt < NEWS_CACHE_MS) {
-    return cached.headlines;
-  }
-
-  const response = await fetch(NEWS_FEED_URL);
-  const xml = new DOMParser().parseFromString(await response.text(), "application/xml");
-  const headlines = [...xml.querySelectorAll("item")]
-    .slice(0, NEWS_HEADLINE_COUNT)
-    .map((item) => ({
-      title: item.querySelector("title")?.textContent?.trim() ?? "",
-      link: item.querySelector("link")?.textContent?.trim() ?? "",
-    }))
-    .filter((headline) => headline.title && headline.link);
-
-  await browser.storage.local.set({ [NEWS_CACHE_KEY]: { fetchedAt: Date.now(), headlines } });
-  return headlines;
-}
-
 function buildNewsRun(headlines) {
   const run = document.createDocumentFragment();
   headlines.forEach((headline, index) => {
@@ -144,13 +120,13 @@ function buildNewsRun(headlines) {
 async function renderNews() {
   let headlines;
   try {
-    headlines = await getHeadlines();
+    headlines = await browser.runtime.sendMessage({ type: "get-headlines" });
   } catch {
     newsTrack.textContent = "Unable to load BBC headlines right now.";
     return;
   }
 
-  if (!headlines.length) {
+  if (!headlines || !headlines.length) {
     newsTrack.textContent = "Unable to load BBC headlines right now.";
     return;
   }

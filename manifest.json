@@ -10,6 +10,9 @@
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
+  "background": {
+    "scripts": ["js/background.js"]
+  },
   "permissions": ["storage"],
   "host_permissions": ["https://feeds.bbci.co.uk/*"],
   "browser_specific_settings": {
