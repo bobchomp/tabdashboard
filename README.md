@@ -1,11 +1,13 @@
 # Custom New Tab Dashboard
 
 A personal Firefox New Tab replacement: a search bar with live suggestions,
-a world clock, and a live BBC News/Sport ticker, with settings stored
-locally via `browser.storage.local`. Plain HTML/CSS/JS, no build step.
-External requests: the chosen search engine's suggestion API as you type
-(DuckDuckGo, Google, Bing, or Ecosia — whichever is selected in Settings),
-and BBC's public RSS feeds for the news ticker (cached ~15 minutes).
+a world clock, an "on this day" history fact, and a live BBC News/Sport
+ticker, with settings stored locally via `browser.storage.local`. Plain
+HTML/CSS/JS, no build step. External requests: the chosen search engine's
+suggestion API as you type (DuckDuckGo, Google, Bing, or Ecosia — whichever
+is selected in Settings), BBC's public RSS feeds for the news ticker (cached
+~15 minutes), and Wikipedia's public "on this day" API (cached per calendar
+day).
 
 ## Try it out (temporary install)
 

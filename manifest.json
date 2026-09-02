@@ -20,7 +20,8 @@
     "https://ac.duckduckgo.com/*",
     "https://suggestqueries.google.com/*",
     "https://api.bing.com/*",
-    "https://ac.ecosia.org/*"
+    "https://ac.ecosia.org/*",
+    "https://en.wikipedia.org/*"
   ],
   "browser_specific_settings": {
     "gecko": {

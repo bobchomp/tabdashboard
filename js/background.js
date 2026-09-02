@@ -91,6 +91,56 @@ async function getSuggestions(engine, query) {
   return parseSuggestions(data).slice(0, SUGGEST_MAX_RESULTS);
 }
 
+const ON_THIS_DAY_CACHE_KEY = "onThisDayCache";
+
+function todayMonthDay() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${month}-${day}`;
+}
+
+async function getOnThisDay() {
+  const dateKey = todayMonthDay();
+
+  const cached = (await browser.storage.local.get(ON_THIS_DAY_CACHE_KEY))[ON_THIS_DAY_CACHE_KEY];
+  if (cached && cached.dateKey === dateKey) {
+    console.log("[on-this-day] serving cached event for", dateKey);
+    return cached.event;
+  }
+
+  const [month, day] = dateKey.split("-");
+  const url = `https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${month}/${day}`;
+  console.log("[on-this-day] fetching", url);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`On this day request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const events = Array.isArray(data.events)
+    ? data.events.filter((item) => item && typeof item.text === "string" && typeof item.year === "number")
+    : [];
+  console.log("[on-this-day] events found:", events.length);
+  if (!events.length) {
+    throw new Error("No events returned");
+  }
+
+  const picked = events[Math.floor(Math.random() * events.length)];
+  const page = Array.isArray(picked.pages)
+    ? picked.pages.find((p) => p?.content_urls?.desktop?.page)
+    : null;
+
+  const event = {
+    year: picked.year,
+    text: picked.text,
+    url: page ? page.content_urls.desktop.page : null,
+  };
+
+  await browser.storage.local.set({ [ON_THIS_DAY_CACHE_KEY]: { dateKey, event } });
+  return event;
+}
+
 browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-headlines") {
     const feed = message.feed === "sport" ? "sport" : "news";
@@ -104,6 +154,13 @@ browser.runtime.onMessage.addListener((message) => {
     return getSuggestions(message.engine, message.query ?? "").catch((error) => {
       console.error(`[suggest:${message.engine}] getSuggestions failed:`, error);
       return [];
+    });
+  }
+
+  if (message?.type === "get-on-this-day") {
+    return getOnThisDay().catch((error) => {
+      console.error("[on-this-day] getOnThisDay failed:", error);
+      throw error;
     });
   }
 

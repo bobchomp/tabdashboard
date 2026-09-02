@@ -33,6 +33,7 @@ const NEWS_LOGOS = {
 const clockEls = document.querySelectorAll("[data-clock]");
 const newsTrack = document.getElementById("news-track");
 const newsLogoBtn = document.getElementById("news-logo");
+const onThisDayEl = document.getElementById("on-this-day");
 
 let currentNewsFeed = "news";
 let newsProgress = { news: 0, sport: 0 };
@@ -101,6 +102,53 @@ function renderClocks() {
     });
     el.querySelector(".clock-time").textContent = time;
   }
+}
+
+function renderOnThisDayFallback() {
+  onThisDayEl.innerHTML = "";
+  const label = document.createElement("div");
+  label.className = "otd-label";
+  label.textContent = "On this day";
+  const event = document.createElement("div");
+  event.className = "otd-event";
+  event.textContent = "Unable to load today's event.";
+  onThisDayEl.append(label, event);
+}
+
+async function renderOnThisDay() {
+  let event;
+  try {
+    event = await browser.runtime.sendMessage({ type: "get-on-this-day" });
+  } catch (error) {
+    console.error("[on-this-day] sendMessage failed:", error);
+    renderOnThisDayFallback();
+    return;
+  }
+
+  if (!event || !event.text) {
+    renderOnThisDayFallback();
+    return;
+  }
+
+  onThisDayEl.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "otd-label";
+  label.append("On this day in ");
+  const yearStrong = document.createElement("strong");
+  yearStrong.textContent = event.year;
+  label.appendChild(yearStrong);
+
+  const eventEl = document.createElement(event.url ? "a" : "div");
+  eventEl.className = "otd-event";
+  eventEl.textContent = event.text;
+  if (event.url) {
+    eventEl.href = event.url;
+    eventEl.target = "_blank";
+    eventEl.rel = "noopener noreferrer";
+  }
+
+  onThisDayEl.append(label, eventEl);
 }
 
 function buildNewsRun(headlines) {
@@ -358,6 +406,7 @@ renderGreeting();
 renderClocks();
 setInterval(renderClocks, 30_000);
 loadSettings();
+renderOnThisDay();
 loadNewsProgress().then(() => {
   renderNewsLogo();
   renderNews();
