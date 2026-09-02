@@ -1,5 +1,5 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "Custom New Tab Dashboard",
   "version": "0.1.0",
   "description": "A personal, local-first replacement for Firefox's New Tab page.",
@@ -11,10 +11,10 @@
     "newtab": "newtab.html"
   },
   "background": {
-    "scripts": ["js/background.js"]
+    "scripts": ["js/background.js"],
+    "persistent": false
   },
   "permissions": ["storage", "https://feeds.bbci.co.uk/*"],
-  "host_permissions": ["https://feeds.bbci.co.uk/*"],
   "browser_specific_settings": {
     "gecko": {
       "id": "newtab-dashboard@local.ext",
