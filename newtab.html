@@ -52,10 +52,6 @@
         <input id="search-input" type="text" placeholder="Search DuckDuckGo or enter address" autofocus>
       </div>
     </form>
-
-    <section class="links-section">
-      <div id="links" class="links-grid"></div>
-    </section>
   </main>
 
   <footer class="news-ticker">
@@ -64,42 +60,6 @@
       <div class="news-track" id="news-track">Loading headlines&hellip;</div>
     </div>
   </footer>
-
-  <dialog id="link-dialog">
-    <form id="link-form" method="dialog">
-      <div class="dialog-header">
-        <h2 id="link-dialog-title">Add link</h2>
-        <button type="button" id="link-close" class="dialog-close" aria-label="Close">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-            <line x1="4" y1="4" x2="20" y2="20"></line>
-            <line x1="20" y1="4" x2="4" y2="20"></line>
-          </svg>
-        </button>
-      </div>
-      <label>
-        Title
-        <input id="link-title" type="text" required maxlength="40">
-      </label>
-      <label>
-        URL
-        <input id="link-url" type="text" required placeholder="example.com">
-      </label>
-      <div class="dialog-actions">
-        <button type="button" id="link-delete" class="danger" hidden>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-            <path d="M10 11v6"></path>
-            <path d="M14 11v6"></path>
-          </svg>
-          Delete
-        </button>
-        <span class="spacer"></span>
-        <button type="button" id="link-cancel">Cancel</button>
-        <button type="submit" id="link-save">Save</button>
-      </div>
-    </form>
-  </dialog>
 
   <dialog id="settings-dialog">
     <form id="settings-form" method="dialog">
