@@ -157,6 +157,7 @@ body {
 
 .search {
   width: 100%;
+  position: relative;
 }
 
 .search-field {
@@ -193,6 +194,41 @@ body {
 
 .search input::placeholder {
   color: var(--text-dim);
+}
+
+.suggestions {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: 0 16px 36px var(--shadow-strong);
+  z-index: 5;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.suggestion svg {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.suggestion:hover,
+.suggestion.active {
+  background: var(--field-fill);
 }
 
 dialog {

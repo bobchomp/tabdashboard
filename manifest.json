@@ -14,7 +14,14 @@
     "scripts": ["js/background.js"],
     "persistent": false
   },
-  "permissions": ["storage", "https://feeds.bbci.co.uk/*"],
+  "permissions": [
+    "storage",
+    "https://feeds.bbci.co.uk/*",
+    "https://ac.duckduckgo.com/*",
+    "https://suggestqueries.google.com/*",
+    "https://api.bing.com/*",
+    "https://ac.ecosia.org/*"
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "newtab-dashboard@local.ext",

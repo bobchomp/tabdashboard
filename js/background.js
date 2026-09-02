@@ -49,6 +49,48 @@ async function getHeadlines(feed) {
   return headlines;
 }
 
+const SUGGEST_URLS = {
+  duckduckgo: (q) => `https://ac.duckduckgo.com/ac/?q=${encodeURIComponent(q)}&type=list`,
+  google: (q) => `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(q)}`,
+  bing: (q) => `https://api.bing.com/osjson.aspx?query=${encodeURIComponent(q)}`,
+  ecosia: (q) => `https://ac.ecosia.org/autocomplete?q=${encodeURIComponent(q)}&type=list`,
+};
+const SUGGEST_MAX_RESULTS = 8;
+
+function parseSuggestions(data) {
+  if (!Array.isArray(data)) return [];
+
+  // OpenSearch-style: ["query", ["suggestion", ...]] (Google, Bing, Ecosia)
+  if (Array.isArray(data[1]) && data[1].every((item) => typeof item === "string")) {
+    return data[1];
+  }
+
+  // DuckDuckGo-style: [{ phrase: "suggestion" }, ...]
+  if (data.length && data.every((item) => item && typeof item === "object" && typeof item.phrase === "string")) {
+    return data.map((item) => item.phrase);
+  }
+
+  // Flat array of strings
+  if (data.every((item) => typeof item === "string")) {
+    return data;
+  }
+
+  return [];
+}
+
+async function getSuggestions(engine, query) {
+  const buildUrl = SUGGEST_URLS[engine];
+  if (!buildUrl || !query.trim()) return [];
+
+  const response = await fetch(buildUrl(query));
+  if (!response.ok) {
+    throw new Error(`Suggest request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  return parseSuggestions(data).slice(0, SUGGEST_MAX_RESULTS);
+}
+
 browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-headlines") {
     const feed = message.feed === "sport" ? "sport" : "news";
@@ -57,5 +99,13 @@ browser.runtime.onMessage.addListener((message) => {
       throw error;
     });
   }
+
+  if (message?.type === "get-suggestions") {
+    return getSuggestions(message.engine, message.query ?? "").catch((error) => {
+      console.error(`[suggest:${message.engine}] getSuggestions failed:`, error);
+      return [];
+    });
+  }
+
   return undefined;
 });

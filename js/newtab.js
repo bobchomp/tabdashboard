@@ -190,9 +190,8 @@ settingsForm.addEventListener("submit", async (event) => {
 settingsCancelBtn.addEventListener("click", () => settingsDialog.close());
 settingsCloseBtn.addEventListener("click", () => settingsDialog.close());
 
-searchForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const query = searchInput.value.trim();
+function runSearch(rawQuery) {
+  const query = rawQuery.trim();
   if (!query) return;
 
   const looksLikeUrl = /^[a-z][a-z0-9+.-]*:\/\//i.test(query) ||
@@ -204,6 +203,126 @@ searchForm.addEventListener("submit", (event) => {
     const engine = SEARCH_ENGINES[settings.searchEngine] || SEARCH_ENGINES[DEFAULT_SETTINGS.searchEngine];
     window.location.href = `${engine.url}${encodeURIComponent(query)}`;
   }
+}
+
+searchForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  runSearch(searchInput.value);
+});
+
+const SUGGESTION_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+const searchSuggestionsEl = document.getElementById("search-suggestions");
+
+let suggestionItems = [];
+let activeSuggestionIndex = -1;
+let suggestDebounceTimer = null;
+let suggestRequestId = 0;
+
+function hideSuggestions() {
+  searchSuggestionsEl.hidden = true;
+  searchSuggestionsEl.innerHTML = "";
+  suggestionItems = [];
+  activeSuggestionIndex = -1;
+  searchInput.setAttribute("aria-expanded", "false");
+  searchInput.removeAttribute("aria-activedescendant");
+}
+
+function selectSuggestion(text) {
+  searchInput.value = text;
+  hideSuggestions();
+  runSearch(text);
+}
+
+function renderSuggestions(items) {
+  if (!items.length) {
+    hideSuggestions();
+    return;
+  }
+
+  suggestionItems = items;
+  activeSuggestionIndex = -1;
+  searchSuggestionsEl.innerHTML = "";
+
+  items.forEach((text, index) => {
+    const li = document.createElement("li");
+    li.className = "suggestion";
+    li.id = `suggestion-${index}`;
+    li.setAttribute("role", "option");
+    li.innerHTML = SUGGESTION_ICON;
+    const label = document.createElement("span");
+    label.textContent = text;
+    li.appendChild(label);
+    li.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      selectSuggestion(text);
+    });
+    searchSuggestionsEl.appendChild(li);
+  });
+
+  searchSuggestionsEl.hidden = false;
+  searchInput.setAttribute("aria-expanded", "true");
+}
+
+function setActiveSuggestion(index) {
+  const options = searchSuggestionsEl.querySelectorAll(".suggestion");
+  options.forEach((el) => el.classList.remove("active"));
+  activeSuggestionIndex = index;
+  if (index >= 0 && options[index]) {
+    options[index].classList.add("active");
+    searchInput.setAttribute("aria-activedescendant", options[index].id);
+  } else {
+    searchInput.removeAttribute("aria-activedescendant");
+  }
+}
+
+async function fetchSuggestions(query) {
+  const requestId = ++suggestRequestId;
+  try {
+    const results = await browser.runtime.sendMessage({
+      type: "get-suggestions",
+      engine: settings.searchEngine,
+      query,
+    });
+    if (requestId !== suggestRequestId) return;
+    renderSuggestions(results || []);
+  } catch {
+    if (requestId !== suggestRequestId) return;
+    hideSuggestions();
+  }
+}
+
+searchInput.addEventListener("input", () => {
+  const query = searchInput.value;
+  clearTimeout(suggestDebounceTimer);
+
+  if (query.trim().length < 2) {
+    suggestRequestId++;
+    hideSuggestions();
+    return;
+  }
+
+  suggestDebounceTimer = setTimeout(() => fetchSuggestions(query), 180);
+});
+
+searchInput.addEventListener("keydown", (event) => {
+  if (searchSuggestionsEl.hidden) return;
+
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    setActiveSuggestion(Math.min(activeSuggestionIndex + 1, suggestionItems.length - 1));
+  } else if (event.key === "ArrowUp") {
+    event.preventDefault();
+    setActiveSuggestion(Math.max(activeSuggestionIndex - 1, -1));
+  } else if (event.key === "Escape") {
+    hideSuggestions();
+  } else if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+    event.preventDefault();
+    selectSuggestion(suggestionItems[activeSuggestionIndex]);
+  }
+});
+
+searchInput.addEventListener("blur", () => {
+  hideSuggestions();
 });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -49,8 +49,9 @@
           <circle cx="11" cy="11" r="7"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input id="search-input" type="text" placeholder="Search DuckDuckGo or enter address" autofocus>
+        <input id="search-input" type="text" placeholder="Search DuckDuckGo or enter address" autofocus autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="search-suggestions">
       </div>
+      <ul id="search-suggestions" class="suggestions" role="listbox" hidden></ul>
     </form>
   </main>
 
