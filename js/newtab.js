@@ -47,6 +47,26 @@ const newsTrack = document.getElementById("news-track");
 const newsLogoBtn = document.getElementById("news-logo");
 
 let currentNewsFeed = "news";
+let newsProgress = { news: 0, sport: 0 };
+let newsFeedVirtualStart = null;
+
+async function loadNewsProgress() {
+  const stored = (await browser.storage.local.get("newsProgress")).newsProgress;
+  if (stored) {
+    newsProgress = { ...newsProgress, ...stored };
+  }
+}
+
+function currentNewsElapsedSeconds() {
+  if (newsFeedVirtualStart === null) return 0;
+  return (Date.now() - newsFeedVirtualStart) / 1000;
+}
+
+async function saveNewsProgress() {
+  if (newsFeedVirtualStart === null) return;
+  newsProgress[currentNewsFeed] = currentNewsElapsedSeconds();
+  await browser.storage.local.set({ newsProgress });
+}
 
 const linksGrid = document.getElementById("links");
 const searchForm = document.getElementById("search-form");
@@ -173,7 +193,12 @@ async function renderNews() {
 
   requestAnimationFrame(() => {
     const runWidth = newsTrack.scrollWidth / 2;
-    newsTrack.style.animationDuration = `${runWidth / NEWS_SCROLL_PX_PER_SEC}s`;
+    const duration = runWidth / NEWS_SCROLL_PX_PER_SEC;
+    newsTrack.style.animationDuration = `${duration}s`;
+
+    const resumeOffset = (newsProgress[currentNewsFeed] ?? 0) % duration;
+    newsFeedVirtualStart = Date.now() - resumeOffset * 1000;
+    newsTrack.style.animationDelay = `-${resumeOffset}s`;
   });
 }
 
@@ -313,16 +338,25 @@ searchForm.addEventListener("submit", (event) => {
   }
 });
 
-newsLogoBtn.addEventListener("click", () => {
+newsLogoBtn.addEventListener("click", async () => {
+  await saveNewsProgress();
   currentNewsFeed = currentNewsFeed === "news" ? "sport" : "news";
   renderNewsLogo();
   renderNews();
 });
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") saveNewsProgress();
+});
+window.addEventListener("pagehide", saveNewsProgress);
+setInterval(saveNewsProgress, 10_000);
 
 renderGreeting();
 renderClocks();
 setInterval(renderClocks, 30_000);
 loadSettings();
 loadLinks();
-renderNewsLogo();
-renderNews();
+loadNewsProgress().then(() => {
+  renderNewsLogo();
+  renderNews();
+});
