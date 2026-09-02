@@ -13,7 +13,7 @@
   "background": {
     "scripts": ["js/background.js"]
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "https://feeds.bbci.co.uk/*"],
   "host_permissions": ["https://feeds.bbci.co.uk/*"],
   "browser_specific_settings": {
     "gecko": {
