@@ -51,17 +51,17 @@ body {
   color: var(--text);
   font-family: "Poppins", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
 .dashboard {
   width: min(760px, 90vw);
-  padding: 6vh 0;
+  padding: 8vh 0 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 48px;
+  gap: 36px;
 }
 
 .greeting {
