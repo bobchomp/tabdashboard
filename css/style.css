@@ -65,10 +65,69 @@ body {
 }
 
 .greeting {
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 600;
   color: var(--text);
   text-align: center;
+}
+
+.clocks {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  gap: 16px;
+}
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: 0 8px 20px var(--shadow);
+  padding: 16px;
+}
+
+.clock-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.clock-side .clock {
+  flex: 1;
+}
+
+.clock-main {
+  border-radius: 26px;
+}
+
+.clock-time {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.clock-side .clock-time {
+  font-size: 20px;
+}
+
+.clock-main .clock-time {
+  font-size: 42px;
+}
+
+.clock-city {
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.clock-side .clock-city {
+  font-size: 12px;
+}
+
+.clock-main .clock-city {
+  font-size: 14px;
 }
 
 .settings-btn {
