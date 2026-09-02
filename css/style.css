@@ -450,6 +450,7 @@ dialog button.danger {
   cursor: pointer;
   font-family: inherit;
   padding: 0;
+  transition: opacity 0.22s ease;
 }
 
 .news-logo:hover {
@@ -476,13 +477,26 @@ dialog button.danger {
   white-space: nowrap;
   animation: news-scroll 40s linear infinite;
   color: var(--text-dim);
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 400;
   padding: 0 28px;
+  transition: opacity 0.22s ease;
 }
 
 .news-track-wrap:hover .news-track {
   animation-play-state: paused;
+}
+
+.news-logo.news-fade-out,
+.news-track.news-fade-out {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .news-logo,
+  .news-track {
+    transition: none;
+  }
 }
 
 .news-item {

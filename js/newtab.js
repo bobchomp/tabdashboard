@@ -338,11 +338,27 @@ searchForm.addEventListener("submit", (event) => {
   }
 });
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let isSwitchingNewsFeed = false;
+
 newsLogoBtn.addEventListener("click", async () => {
+  if (isSwitchingNewsFeed) return;
+  isSwitchingNewsFeed = true;
+
   await saveNewsProgress();
+
+  newsLogoBtn.classList.add("news-fade-out");
+  newsTrack.classList.add("news-fade-out");
+  await sleep(220);
+
   currentNewsFeed = currentNewsFeed === "news" ? "sport" : "news";
   renderNewsLogo();
-  renderNews();
+  await renderNews();
+
+  newsLogoBtn.classList.remove("news-fade-out");
+  newsTrack.classList.remove("news-fade-out");
+  isSwitchingNewsFeed = false;
 });
 
 document.addEventListener("visibilitychange", () => {
