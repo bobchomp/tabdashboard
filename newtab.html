@@ -14,6 +14,33 @@
   </button>
 
   <main class="dashboard">
+    <section class="clocks">
+      <div class="clock-side">
+        <div class="clock" data-clock="America/New_York">
+          <div class="clock-time"></div>
+          <div class="clock-city">New York</div>
+        </div>
+        <div class="clock" data-clock="America/Los_Angeles">
+          <div class="clock-time"></div>
+          <div class="clock-city">Los Angeles</div>
+        </div>
+      </div>
+      <div class="clock clock-main" data-clock="local">
+        <div class="clock-time"></div>
+        <div class="clock-city">Inverness</div>
+      </div>
+      <div class="clock-side">
+        <div class="clock" data-clock="Asia/Tokyo">
+          <div class="clock-time"></div>
+          <div class="clock-city">Tokyo</div>
+        </div>
+        <div class="clock" data-clock="Australia/Sydney">
+          <div class="clock-time"></div>
+          <div class="clock-city">Sydney</div>
+        </div>
+      </div>
+    </section>
+
     <div id="greeting" class="greeting"></div>
 
     <form id="search-form" class="search" autocomplete="off">
