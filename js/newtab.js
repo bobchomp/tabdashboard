@@ -12,6 +12,25 @@ const DEFAULT_SETTINGS = { searchEngine: "duckduckgo" };
 
 const NEWS_SCROLL_PX_PER_SEC = 55;
 
+const NEWS_LOGOS = {
+  news: {
+    label: "News",
+    icon: `<svg width="34" height="30" viewBox="0 0 34 30" fill="none">
+      <rect x="0" y="0" width="16" height="16" rx="2" fill="#BB1919"></rect>
+      <rect x="18" y="6" width="16" height="16" rx="2" fill="#BB1919"></rect>
+      <rect x="4" y="18" width="12" height="12" rx="2" fill="#BB1919"></rect>
+    </svg>`,
+  },
+  sport: {
+    label: "Sport",
+    icon: `<svg width="34" height="28" viewBox="0 0 34 28" fill="none">
+      <path d="M0 0H26L20 8H0Z" fill="#FFC300"></path>
+      <path d="M2 10H20L15 18H2Z" fill="#FFA000"></path>
+      <path d="M4 20H14L10 28H4Z" fill="#FF7A00"></path>
+    </svg>`,
+  },
+};
+
 const TILE_PALETTE = [
   { bg: "#C9B8F0", text: "#4A3E80" },
   { bg: "#B8ECD3", text: "#2B6B4D" },
@@ -25,6 +44,9 @@ const EDIT_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" s
 
 const clockEls = document.querySelectorAll("[data-clock]");
 const newsTrack = document.getElementById("news-track");
+const newsLogoBtn = document.getElementById("news-logo");
+
+let currentNewsFeed = "news";
 
 const linksGrid = document.getElementById("links");
 const searchForm = document.getElementById("search-form");
@@ -117,10 +139,18 @@ function buildNewsRun(headlines) {
   return run;
 }
 
+function renderNewsLogo() {
+  const other = currentNewsFeed === "news" ? "sport" : "news";
+  const config = NEWS_LOGOS[currentNewsFeed];
+  newsLogoBtn.innerHTML = `${config.icon}<span>${config.label}</span>`;
+  newsLogoBtn.setAttribute("aria-label", `Showing BBC ${config.label}. Click to switch to BBC ${NEWS_LOGOS[other].label}.`);
+}
+
 async function renderNews() {
+  newsTrack.textContent = "Loading headlines…";
   let headlines;
   try {
-    headlines = await browser.runtime.sendMessage({ type: "get-headlines" });
+    headlines = await browser.runtime.sendMessage({ type: "get-headlines", feed: currentNewsFeed });
   } catch (error) {
     console.error("[news] sendMessage failed:", error);
     newsTrack.textContent = "Unable to load BBC headlines right now.";
@@ -283,9 +313,16 @@ searchForm.addEventListener("submit", (event) => {
   }
 });
 
+newsLogoBtn.addEventListener("click", () => {
+  currentNewsFeed = currentNewsFeed === "news" ? "sport" : "news";
+  renderNewsLogo();
+  renderNews();
+});
+
 renderGreeting();
 renderClocks();
 setInterval(renderClocks, 30_000);
 loadSettings();
 loadLinks();
+renderNewsLogo();
 renderNews();
