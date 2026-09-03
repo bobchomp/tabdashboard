@@ -1,9 +1,12 @@
 const SETTINGS_STORAGE_KEY = "settings";
 
-// caldav.icloud.com is built for desktop CalDAV clients, not browsers: it
-// never sends Access-Control-* headers, and PROPFIND/REPORT are non-simple
+// iCloud's CalDAV entry point (caldav.icloud.com) redirects discovery to a
+// per-account partition server (e.g. p01-caldav.icloud.com), so the CORS
+// workaround has to cover any icloud.com host, not just the bare one.
+// These servers are built for desktop CalDAV clients, not browsers: they
+// never send Access-Control-* headers, and PROPFIND/REPORT are non-simple
 // HTTP methods that trigger a CORS preflight regardless of host_permissions.
-// Inject the missing headers onto every response from that host (including
+// Inject the missing headers onto every response from icloud.com (including
 // the browser's own preflight OPTIONS response) so the browser accepts it.
 browser.webRequest.onHeadersReceived.addListener(
   (details) => {
@@ -21,7 +24,7 @@ browser.webRequest.onHeadersReceived.addListener(
     });
     return { responseHeaders: headers };
   },
-  { urls: ["https://caldav.icloud.com/*"] },
+  { urls: ["https://*.icloud.com/*"] },
   ["blocking", "responseHeaders"]
 );
 
@@ -187,15 +190,23 @@ async function getCalendarCredentials() {
 }
 
 async function caldavRequest(method, url, credentials, { headers = {}, body } = {}) {
-  const response = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `Basic ${btoa(`${credentials.appleId}:${credentials.password}`)}`,
-      "Content-Type": "application/xml; charset=utf-8",
-      ...headers,
-    },
-    body,
-  });
+  console.log(`[calendar] ${method} ${url}`);
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        Authorization: `Basic ${btoa(`${credentials.appleId}:${credentials.password}`)}`,
+        "Content-Type": "application/xml; charset=utf-8",
+        ...headers,
+      },
+      body,
+    });
+  } catch (error) {
+    console.error(`[calendar] ${method} ${url} threw before a response:`, error);
+    throw error;
+  }
+  console.log(`[calendar] ${method} ${url} -> ${response.status}`);
   if (!response.ok) {
     throw new Error(`CalDAV ${method} ${url} failed with status ${response.status}`);
   }

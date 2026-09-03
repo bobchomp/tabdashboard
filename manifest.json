@@ -24,7 +24,7 @@
     "https://api.bing.com/*",
     "https://ac.ecosia.org/*",
     "https://en.wikipedia.org/*",
-    "https://caldav.icloud.com/*"
+    "https://*.icloud.com/*"
   ],
   "browser_specific_settings": {
     "gecko": {
