@@ -108,6 +108,9 @@ function renderClocks() {
   }
 }
 
+let onThisDayEvents = [];
+let onThisDayIndex = 0;
+
 function renderOnThisDayFallback() {
   onThisDayEl.innerHTML = "";
   const label = document.createElement("div");
@@ -119,21 +122,7 @@ function renderOnThisDayFallback() {
   onThisDayEl.append(label, event);
 }
 
-async function renderOnThisDay() {
-  let event;
-  try {
-    event = await browser.runtime.sendMessage({ type: "get-on-this-day" });
-  } catch (error) {
-    console.error("[on-this-day] sendMessage failed:", error);
-    renderOnThisDayFallback();
-    return;
-  }
-
-  if (!event || !event.text) {
-    renderOnThisDayFallback();
-    return;
-  }
-
+function renderOnThisDayEvent(event) {
   onThisDayEl.innerHTML = "";
 
   const label = document.createElement("div");
@@ -160,6 +149,33 @@ async function renderOnThisDay() {
 
   onThisDayEl.append(label, eventEl);
 }
+
+async function renderOnThisDay() {
+  let events;
+  try {
+    events = await browser.runtime.sendMessage({ type: "get-on-this-day" });
+  } catch (error) {
+    console.error("[on-this-day] sendMessage failed:", error);
+    events = [];
+  }
+
+  onThisDayEvents = Array.isArray(events) ? events.filter((event) => event && event.text) : [];
+
+  if (!onThisDayEvents.length) {
+    renderOnThisDayFallback();
+    return;
+  }
+
+  onThisDayIndex = 0;
+  renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+}
+
+onThisDayEl.addEventListener("click", (event) => {
+  if (event.target.closest("a")) return;
+  if (onThisDayEvents.length < 2) return;
+  onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
+  renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+});
 
 function formatEventDayLabel(date) {
   return date.toLocaleDateString("en-US", { weekday: "long" });

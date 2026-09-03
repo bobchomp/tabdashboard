@@ -130,13 +130,15 @@ function todayMonthDay() {
   return `${month}-${day}`;
 }
 
+const ON_THIS_DAY_PICK_COUNT = 3;
+
 async function getOnThisDay() {
   const dateKey = todayMonthDay();
 
   const cached = (await browser.storage.local.get(ON_THIS_DAY_CACHE_KEY))[ON_THIS_DAY_CACHE_KEY];
   if (cached && cached.dateKey === dateKey) {
-    console.log("[on-this-day] serving cached event for", dateKey);
-    return cached.event;
+    console.log("[on-this-day] serving cached events for", dateKey);
+    return cached.events;
   }
 
   const [month, day] = dateKey.split("-");
@@ -148,27 +150,36 @@ async function getOnThisDay() {
   }
 
   const data = await response.json();
-  const events = Array.isArray(data.events)
+  const rawEvents = Array.isArray(data.events)
     ? data.events.filter((item) => item && typeof item.text === "string" && typeof item.year === "number")
     : [];
-  console.log("[on-this-day] events found:", events.length);
-  if (!events.length) {
+  console.log("[on-this-day] events found:", rawEvents.length);
+  if (!rawEvents.length) {
     throw new Error("No events returned");
   }
 
-  const picked = events[Math.floor(Math.random() * events.length)];
-  const page = Array.isArray(picked.pages)
-    ? picked.pages.find((p) => p?.content_urls?.desktop?.page)
-    : null;
+  const pool = [...rawEvents];
+  const pickCount = Math.min(ON_THIS_DAY_PICK_COUNT, pool.length);
+  const picked = [];
+  for (let i = 0; i < pickCount; i++) {
+    const index = Math.floor(Math.random() * pool.length);
+    picked.push(pool.splice(index, 1)[0]);
+  }
 
-  const event = {
-    year: picked.year,
-    text: picked.text,
-    url: page ? page.content_urls.desktop.page : null,
-  };
+  const events = picked.map((item) => {
+    const page = Array.isArray(item.pages)
+      ? item.pages.find((p) => p?.content_urls?.desktop?.page)
+      : null;
+    return {
+      year: item.year,
+      text: item.text,
+      url: page ? page.content_urls.desktop.page : null,
+    };
+  });
 
-  await browser.storage.local.set({ [ON_THIS_DAY_CACHE_KEY]: { dateKey, event } });
-  return event;
+  console.log("[on-this-day] picked events:", events.length);
+  await browser.storage.local.set({ [ON_THIS_DAY_CACHE_KEY]: { dateKey, events } });
+  return events;
 }
 
 const CALDAV_ROOT = "https://caldav.icloud.com/";
