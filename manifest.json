@@ -16,6 +16,8 @@
   },
   "permissions": [
     "storage",
+    "webRequest",
+    "webRequestBlocking",
     "https://feeds.bbci.co.uk/*",
     "https://ac.duckduckgo.com/*",
     "https://suggestqueries.google.com/*",

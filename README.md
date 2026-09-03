@@ -26,6 +26,16 @@ a personal, locally-installed extension, but worth knowing since it isn't
 encrypted at rest. It's sent only to `caldav.icloud.com`, over HTTPS, via
 the background script.
 
+CalDAV uses non-standard HTTP methods (`PROPFIND`, `REPORT`) that trigger a
+browser CORS preflight regardless of the extension's host permissions, and
+iCloud's CalDAV server — built for desktop calendar apps, not browsers —
+doesn't send the `Access-Control-*` headers a preflight needs. The
+extension works around this with a `webRequest` listener (`webRequest` +
+`webRequestBlocking` permissions) that adds those headers onto responses
+from `caldav.icloud.com` only — the same technique standalone "CORS
+unblock" extensions use, just scoped to this one host instead of every
+site.
+
 ## Try it out (temporary install)
 
 1. Open `about:debugging#/runtime/this-firefox` in Firefox.

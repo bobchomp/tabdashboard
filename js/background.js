@@ -1,5 +1,30 @@
 const SETTINGS_STORAGE_KEY = "settings";
 
+// caldav.icloud.com is built for desktop CalDAV clients, not browsers: it
+// never sends Access-Control-* headers, and PROPFIND/REPORT are non-simple
+// HTTP methods that trigger a CORS preflight regardless of host_permissions.
+// Inject the missing headers onto every response from that host (including
+// the browser's own preflight OPTIONS response) so the browser accepts it.
+browser.webRequest.onHeadersReceived.addListener(
+  (details) => {
+    const headers = (details.responseHeaders || []).filter(
+      (h) => !/^access-control-/i.test(h.name)
+    );
+    headers.push({ name: "Access-Control-Allow-Origin", value: "*" });
+    headers.push({
+      name: "Access-Control-Allow-Methods",
+      value: "GET, POST, PUT, DELETE, OPTIONS, PROPFIND, PROPPATCH, REPORT, MKCALENDAR",
+    });
+    headers.push({
+      name: "Access-Control-Allow-Headers",
+      value: "Authorization, Content-Type, Depth, If-Match, If-None-Match",
+    });
+    return { responseHeaders: headers };
+  },
+  { urls: ["https://caldav.icloud.com/*"] },
+  ["blocking", "responseHeaders"]
+);
+
 const FEEDS = {
   news: "https://feeds.bbci.co.uk/news/rss.xml",
   sport: "https://feeds.bbci.co.uk/sport/rss.xml",
