@@ -206,14 +206,10 @@ a.otd-event:hover {
   position: fixed;
   top: 8vh;
   left: 28px;
-  width: 300px;
-  background: var(--surface);
-  border-radius: 26px;
-  box-shadow: 0 8px 20px var(--shadow);
-  padding: 22px 24px;
+  width: 240px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
 }
 
 .calendar-label {
@@ -222,24 +218,24 @@ a.otd-event:hover {
   color: var(--text-dim);
 }
 
-.calendar-events {
+.calendar-day {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+}
+
+.calendar-day-heading {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .calendar-event {
   display: flex;
-  gap: 12px;
-  align-items: baseline;
-}
-
-.calendar-event-time {
-  flex-shrink: 0;
-  width: 56px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-dim);
+  flex-direction: column;
+  gap: 2px;
 }
 
 .calendar-event-title {
@@ -247,11 +243,11 @@ a.otd-event:hover {
   font-weight: 500;
   color: var(--text);
   line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+}
+
+.calendar-event-time {
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 .calendar-empty {

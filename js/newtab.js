@@ -155,12 +155,7 @@ async function renderOnThisDay() {
 }
 
 function formatEventDayLabel(date) {
-  const today = new Date();
-  if (date.toDateString() === today.toDateString()) return "Today";
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
-  return date.toLocaleDateString("en-US", { weekday: "short" });
+  return date.toLocaleDateString("en-US", { weekday: "long" });
 }
 
 function formatEventTime(event) {
@@ -213,30 +208,40 @@ async function renderCalendar() {
   label.textContent = "Calendar";
   calendarWidget.appendChild(label);
 
-  const list = document.createElement("div");
-  list.className = "calendar-events";
+  let currentDayKey = null;
+  let currentDayEl = null;
 
   for (const event of events) {
-    const row = document.createElement("div");
-    row.className = "calendar-event";
+    const start = new Date(event.start);
+    const dayKey = start.toDateString();
 
-    const time = document.createElement("div");
-    time.className = "calendar-event-time";
-    const dayLine = document.createElement("div");
-    dayLine.textContent = formatEventDayLabel(new Date(event.start));
-    const timeLine = document.createElement("div");
-    timeLine.textContent = formatEventTime(event);
-    time.append(dayLine, timeLine);
+    if (dayKey !== currentDayKey) {
+      currentDayKey = dayKey;
+      currentDayEl = document.createElement("div");
+      currentDayEl.className = "calendar-day";
+
+      const heading = document.createElement("div");
+      heading.className = "calendar-day-heading";
+      heading.textContent = formatEventDayLabel(start);
+      currentDayEl.appendChild(heading);
+
+      calendarWidget.appendChild(currentDayEl);
+    }
+
+    const eventEl = document.createElement("div");
+    eventEl.className = "calendar-event";
 
     const title = document.createElement("div");
     title.className = "calendar-event-title";
     title.textContent = event.summary;
 
-    row.append(time, title);
-    list.appendChild(row);
-  }
+    const time = document.createElement("div");
+    time.className = "calendar-event-time";
+    time.textContent = formatEventTime(event);
 
-  calendarWidget.appendChild(list);
+    eventEl.append(title, time);
+    currentDayEl.appendChild(eventEl);
+  }
 }
 
 function buildNewsRun(headlines) {
