@@ -155,11 +155,17 @@ body {
   transform: translateY(-2px) rotate(20deg);
 }
 
-.on-this-day {
+.right-stack {
   position: fixed;
   top: 8vh;
   right: 28px;
   width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.on-this-day {
   background: var(--surface);
   border-radius: 26px;
   box-shadow: 0 8px 20px var(--shadow);
@@ -220,8 +226,90 @@ body {
   flex-shrink: 0;
 }
 
+.side-widget {
+  background: var(--surface);
+  border-radius: 26px;
+  box-shadow: 0 8px 20px var(--shadow);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.side-widget-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.side-widget-empty {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.word-of-day-word {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.word-of-day-pos {
+  font-size: 13px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.word-of-day-definition {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.quote-of-day-text {
+  font-size: 15px;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.quote-of-day-author {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.currency-rates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.currency-rate-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.currency-rate-pair {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.currency-rate-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 @media (max-width: 1150px) {
-  .on-this-day {
+  .right-stack {
     display: none;
   }
 }

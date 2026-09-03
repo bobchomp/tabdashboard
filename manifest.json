@@ -25,7 +25,10 @@
     "https://ac.ecosia.org/*",
     "https://en.wikipedia.org/*",
     "https://*.icloud.com/*",
-    "https://admin.dollopsicecream.co.uk/*"
+    "https://admin.dollopsicecream.co.uk/*",
+    "https://api.dictionaryapi.dev/*",
+    "https://api.quotable.io/*",
+    "https://api.frankfurter.app/*"
   ],
   "browser_specific_settings": {
     "gecko": {

@@ -1,16 +1,21 @@
 # Custom New Tab Dashboard
 
 A personal Firefox New Tab replacement: a search bar with live suggestions,
-a world clock, an "on this day" history fact, a calendar widget (iCloud plus
-a second subscribed ICS feed), and a live BBC News/Sport ticker, with
-settings stored locally via `browser.storage.local`. Plain HTML/CSS/JS, no
-build step. External requests: the chosen search engine's suggestion API as
-you type (DuckDuckGo, Google, Bing, or Ecosia — whichever is selected in
-Settings), BBC's public RSS feeds for the news ticker (cached ~15 minutes),
-Wikipedia's public "on this day" API (cached per calendar day), Apple's
-iCloud CalDAV server for the calendar widget (cached ~15 minutes, only if
-you've entered credentials in Settings), and a hardcoded `.ics` subscription
-feed shown directly beneath it (cached ~15 minutes).
+a world clock, an "on this day" history fact (with word-of-the-day,
+GBP exchange rate, and quote-of-the-day widgets underneath), a calendar
+widget (iCloud plus a second subscribed ICS feed), and a live BBC News/Sport
+ticker, with settings stored locally via `browser.storage.local`. Plain
+HTML/CSS/JS, no build step. External requests: the chosen search engine's
+suggestion API as you type (DuckDuckGo, Google, Bing, or Ecosia — whichever
+is selected in Settings), BBC's public RSS feeds for the news ticker (cached
+~15 minutes), Wikipedia's public "on this day" API (cached per calendar
+day), Apple's iCloud CalDAV server for the calendar widget (cached ~15
+minutes, only if you've entered credentials in Settings), a hardcoded
+`.ics` subscription feed shown directly beneath it (cached ~15 minutes),
+the free Dictionary API (`api.dictionaryapi.dev`) for word-of-the-day,
+Frankfurter's free exchange-rate API (`api.frankfurter.app`, ECB rates) for
+the GBP rate ticker, and Quotable (`api.quotable.io`) for quote-of-the-day
+(the latter two cached per calendar day, the word once resolved).
 
 ### iCloud calendar setup
 

@@ -182,6 +182,142 @@ async function getOnThisDay() {
   return events;
 }
 
+function todayDateKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+const WORD_OF_DAY_CACHE_KEY = "wordOfDayCache";
+
+const WORD_LIST = [
+  "ephemeral", "serendipity", "mellifluous", "petrichor", "luminous", "quixotic",
+  "labyrinth", "nostalgia", "solitude", "wanderlust", "resilience", "eloquent",
+  "whimsical", "tranquil", "clandestine", "ethereal", "verdant", "opulent",
+  "effervescent", "cascade", "harbinger", "iridescent", "melancholy", "paradox",
+  "reverie", "solace", "tenacious", "vivid", "wistful", "zealous", "audacious",
+  "benevolent", "candid", "diligent", "enigma", "fortitude", "gregarious",
+  "halcyon", "impeccable", "jubilant", "kinetic", "lucid", "magnanimous",
+  "nebulous", "oblivion", "pragmatic", "quaint", "resonant", "sanguine",
+  "tumultuous", "ubiquitous", "vibrant", "wry", "xenial", "yearning", "zephyr",
+  "amiable", "bespoke", "cacophony", "demure", "euphoria", "flourish",
+  "gossamer", "hapless", "incandescent", "juxtapose", "keen", "languid",
+  "meander", "nimble", "ornate", "perceptive", "quiver", "radiant",
+  "stoic", "thrive", "unravel", "vintage", "whimsy", "yielding", "zenith",
+  "abundant", "brisk", "capricious", "dappled", "elusive", "frugal",
+  "genuine", "humble", "ignite", "jovial", "kindle", "lament",
+  "mirthful", "novel", "opaque", "placid",
+];
+
+async function fetchWordDefinition(word) {
+  const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`;
+  const response = await fetch(url);
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  const entry = Array.isArray(data) ? data[0] : null;
+  if (!entry) return null;
+
+  const meaning = Array.isArray(entry.meanings)
+    ? entry.meanings.find((m) => Array.isArray(m.definitions) && m.definitions.length)
+    : null;
+  const definition = meaning?.definitions?.[0]?.definition;
+  if (!definition) return null;
+
+  return {
+    word: entry.word || word,
+    partOfSpeech: meaning.partOfSpeech || null,
+    definition,
+  };
+}
+
+async function getWordOfTheDay() {
+  const dateKey = todayDateKey();
+
+  const cached = (await browser.storage.local.get(WORD_OF_DAY_CACHE_KEY))[WORD_OF_DAY_CACHE_KEY];
+  if (cached && cached.dateKey === dateKey && cached.word) {
+    console.log("[word-of-day] serving cached word for", dateKey);
+    return cached.word;
+  }
+
+  const pool = [...WORD_LIST];
+  let word = null;
+  while (pool.length && !word) {
+    const index = Math.floor(Math.random() * pool.length);
+    const candidate = pool.splice(index, 1)[0];
+    try {
+      word = await fetchWordDefinition(candidate);
+    } catch (error) {
+      console.error("[word-of-day] lookup failed for", candidate, error);
+    }
+  }
+
+  if (!word) throw new Error("No word definition could be resolved");
+
+  console.log("[word-of-day] picked word:", word.word);
+  await browser.storage.local.set({ [WORD_OF_DAY_CACHE_KEY]: { dateKey, word } });
+  return word;
+}
+
+const QUOTE_OF_DAY_CACHE_KEY = "quoteOfDayCache";
+
+async function getQuoteOfTheDay() {
+  const dateKey = todayDateKey();
+
+  const cached = (await browser.storage.local.get(QUOTE_OF_DAY_CACHE_KEY))[QUOTE_OF_DAY_CACHE_KEY];
+  if (cached && cached.dateKey === dateKey && cached.quote) {
+    console.log("[quote-of-day] serving cached quote for", dateKey);
+    return cached.quote;
+  }
+
+  const response = await fetch("https://api.quotable.io/random");
+  if (!response.ok) {
+    throw new Error(`Quote request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data || typeof data.content !== "string" || typeof data.author !== "string") {
+    throw new Error("Unexpected quote response shape");
+  }
+
+  const quote = { text: data.content, author: data.author };
+  console.log("[quote-of-day] picked quote by", quote.author);
+  await browser.storage.local.set({ [QUOTE_OF_DAY_CACHE_KEY]: { dateKey, quote } });
+  return quote;
+}
+
+const EXCHANGE_RATES_CACHE_KEY = "exchangeRatesCache";
+const EXCHANGE_RATE_TARGETS = ["USD", "EUR", "JPY", "AUD"];
+
+async function getExchangeRates() {
+  const dateKey = todayDateKey();
+
+  const cached = (await browser.storage.local.get(EXCHANGE_RATES_CACHE_KEY))[EXCHANGE_RATES_CACHE_KEY];
+  if (cached && cached.dateKey === dateKey && Array.isArray(cached.rates)) {
+    console.log("[exchange-rates] serving cached rates for", dateKey);
+    return cached.rates;
+  }
+
+  const url = `https://api.frankfurter.app/latest?from=GBP&to=${EXCHANGE_RATE_TARGETS.join(",")}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Exchange rate request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data || typeof data.rates !== "object" || !data.rates) {
+    throw new Error("Unexpected exchange rate response shape");
+  }
+
+  const rates = EXCHANGE_RATE_TARGETS
+    .filter((code) => typeof data.rates[code] === "number")
+    .map((code) => ({ code, rate: data.rates[code] }));
+
+  if (!rates.length) throw new Error("No exchange rates returned");
+
+  console.log("[exchange-rates] picked rates:", rates.length);
+  await browser.storage.local.set({ [EXCHANGE_RATES_CACHE_KEY]: { dateKey, rates } });
+  return rates;
+}
+
 const CALDAV_ROOT = "https://caldav.icloud.com/";
 const CALENDAR_DISCOVERY_CACHE_KEY = "calendarDiscoveryCache";
 const CALENDAR_EVENTS_CACHE_KEY = "calendarEventsCache";
@@ -535,6 +671,27 @@ browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-ics-feed-events") {
     return getIcsFeedEvents().catch((error) => {
       console.error("[ics-feed] getIcsFeedEvents failed:", error);
+      throw error;
+    });
+  }
+
+  if (message?.type === "get-word-of-day") {
+    return getWordOfTheDay().catch((error) => {
+      console.error("[word-of-day] getWordOfTheDay failed:", error);
+      throw error;
+    });
+  }
+
+  if (message?.type === "get-quote-of-day") {
+    return getQuoteOfTheDay().catch((error) => {
+      console.error("[quote-of-day] getQuoteOfTheDay failed:", error);
+      throw error;
+    });
+  }
+
+  if (message?.type === "get-exchange-rates") {
+    return getExchangeRates().catch((error) => {
+      console.error("[exchange-rates] getExchangeRates failed:", error);
       throw error;
     });
   }

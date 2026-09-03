@@ -34,6 +34,9 @@ const clockEls = document.querySelectorAll("[data-clock]");
 const newsTrack = document.getElementById("news-track");
 const newsLogoBtn = document.getElementById("news-logo");
 const onThisDayEl = document.getElementById("on-this-day");
+const wordWidgetEl = document.getElementById("word-widget");
+const currencyWidgetEl = document.getElementById("currency-widget");
+const quoteWidgetEl = document.getElementById("quote-widget");
 
 let currentNewsFeed = "news";
 let newsProgress = { news: 0, sport: 0 };
@@ -210,6 +213,132 @@ onThisDayEl.addEventListener("click", (event) => {
   advanceOnThisDay();
   startOnThisDayAutoRotate();
 });
+
+function renderSideWidgetMessage(container, label, message) {
+  container.innerHTML = "";
+  const labelEl = document.createElement("div");
+  labelEl.className = "side-widget-label";
+  labelEl.textContent = label;
+  const empty = document.createElement("div");
+  empty.className = "side-widget-empty";
+  empty.textContent = message;
+  container.append(labelEl, empty);
+}
+
+async function renderWordOfDay() {
+  let word;
+  try {
+    word = await browser.runtime.sendMessage({ type: "get-word-of-day" });
+  } catch (error) {
+    console.error("[word-of-day] sendMessage failed:", error);
+    word = null;
+  }
+
+  if (!word || !word.word || !word.definition) {
+    renderSideWidgetMessage(wordWidgetEl, "Word of the day", "Unable to load a word today.");
+    return;
+  }
+
+  wordWidgetEl.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "side-widget-label";
+  label.textContent = "Word of the day";
+
+  const wordEl = document.createElement("div");
+  wordEl.className = "word-of-day-word";
+  wordEl.textContent = word.word;
+
+  wordWidgetEl.append(label, wordEl);
+
+  if (word.partOfSpeech) {
+    const pos = document.createElement("div");
+    pos.className = "word-of-day-pos";
+    pos.textContent = word.partOfSpeech;
+    wordWidgetEl.appendChild(pos);
+  }
+
+  const definition = document.createElement("div");
+  definition.className = "word-of-day-definition";
+  definition.textContent = word.definition;
+  wordWidgetEl.appendChild(definition);
+}
+
+async function renderQuoteOfDay() {
+  let quote;
+  try {
+    quote = await browser.runtime.sendMessage({ type: "get-quote-of-day" });
+  } catch (error) {
+    console.error("[quote-of-day] sendMessage failed:", error);
+    quote = null;
+  }
+
+  if (!quote || !quote.text || !quote.author) {
+    renderSideWidgetMessage(quoteWidgetEl, "Quote of the day", "Unable to load a quote today.");
+    return;
+  }
+
+  quoteWidgetEl.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "side-widget-label";
+  label.textContent = "Quote of the day";
+
+  const text = document.createElement("div");
+  text.className = "quote-of-day-text";
+  text.textContent = `"${quote.text}"`;
+
+  const author = document.createElement("div");
+  author.className = "quote-of-day-author";
+  author.textContent = `— ${quote.author}`;
+
+  quoteWidgetEl.append(label, text, author);
+}
+
+const CURRENCY_SYMBOLS = { USD: "$", EUR: "€", JPY: "¥", AUD: "A$" };
+
+async function renderCurrencyWidget() {
+  let rates;
+  try {
+    rates = await browser.runtime.sendMessage({ type: "get-exchange-rates" });
+  } catch (error) {
+    console.error("[exchange-rates] sendMessage failed:", error);
+    rates = null;
+  }
+
+  if (!Array.isArray(rates) || !rates.length) {
+    renderSideWidgetMessage(currencyWidgetEl, "Exchange rates", "Unable to load exchange rates today.");
+    return;
+  }
+
+  currencyWidgetEl.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "side-widget-label";
+  label.textContent = "GBP exchange rates";
+
+  const list = document.createElement("div");
+  list.className = "currency-rates";
+
+  for (const { code, rate } of rates) {
+    const row = document.createElement("div");
+    row.className = "currency-rate-row";
+
+    const pair = document.createElement("div");
+    pair.className = "currency-rate-pair";
+    pair.textContent = `GBP → ${code}`;
+
+    const value = document.createElement("div");
+    value.className = "currency-rate-value";
+    const symbol = CURRENCY_SYMBOLS[code] || "";
+    value.textContent = `${symbol}${rate.toFixed(2)}`;
+
+    row.append(pair, value);
+    list.appendChild(row);
+  }
+
+  currencyWidgetEl.append(label, list);
+}
 
 function formatEventDayLabel(date) {
   return date.toLocaleDateString("en-US", { weekday: "long" });
@@ -595,6 +724,9 @@ setInterval(renderClocks, 30_000);
 loadSettings().then(() => renderCalendar());
 renderIcsFeedCalendar();
 renderOnThisDay();
+renderWordOfDay();
+renderCurrencyWidget();
+renderQuoteOfDay();
 loadNewsProgress().then(() => {
   renderNewsLogo();
   renderNews();
