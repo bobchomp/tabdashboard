@@ -268,17 +268,17 @@ async function getQuoteOfTheDay() {
     return cached.quote;
   }
 
-  const response = await fetch("https://api.quotable.io/random");
+  const response = await fetch("https://dummyjson.com/quotes/random");
   if (!response.ok) {
     throw new Error(`Quote request failed with status ${response.status}`);
   }
 
   const data = await response.json();
-  if (!data || typeof data.content !== "string" || typeof data.author !== "string") {
+  if (!data || typeof data.quote !== "string" || typeof data.author !== "string") {
     throw new Error("Unexpected quote response shape");
   }
 
-  const quote = { text: data.content, author: data.author };
+  const quote = { text: data.quote, author: data.author };
   console.log("[quote-of-day] picked quote by", quote.author);
   await browser.storage.local.set({ [QUOTE_OF_DAY_CACHE_KEY]: { dateKey, quote } });
   return quote;

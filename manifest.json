@@ -27,7 +27,7 @@
     "https://*.icloud.com/*",
     "https://admin.dollopsicecream.co.uk/*",
     "https://api.dictionaryapi.dev/*",
-    "https://api.quotable.io/*",
+    "https://dummyjson.com/*",
     "https://api.frankfurter.app/*"
   ],
   "browser_specific_settings": {

@@ -9,6 +9,23 @@ const SEARCH_ENGINES = {
 };
 const DEFAULT_SETTINGS = { searchEngine: "duckduckgo", appleId: "", appSpecificPassword: "" };
 
+// Firefox's non-persistent background script can still be waking up when
+// several sendMessage calls fire near-simultaneously on page load, which
+// intermittently fails one of them with "Could not establish connection"
+// even though the listener is registered and working. Retry once after a
+// short delay rather than treating that race as a real failure.
+async function sendMessageWithRetry(message, attempts = 2) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await browser.runtime.sendMessage(message);
+    } catch (error) {
+      const isConnectionRace = /Could not establish connection/i.test(error?.message || "");
+      if (!isConnectionRace || attempt === attempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+  }
+}
+
 const NEWS_SCROLL_PX_PER_SEC = 55;
 
 const NEWS_LOGOS = {
@@ -190,7 +207,7 @@ function startOnThisDayAutoRotate() {
 async function renderOnThisDay() {
   let events;
   try {
-    events = await browser.runtime.sendMessage({ type: "get-on-this-day" });
+    events = await sendMessageWithRetry({ type: "get-on-this-day" });
   } catch (error) {
     console.error("[on-this-day] sendMessage failed:", error);
     events = [];
@@ -228,7 +245,7 @@ function renderSideWidgetMessage(container, label, message) {
 async function renderWordOfDay() {
   let word;
   try {
-    word = await browser.runtime.sendMessage({ type: "get-word-of-day" });
+    word = await sendMessageWithRetry({ type: "get-word-of-day" });
   } catch (error) {
     console.error("[word-of-day] sendMessage failed:", error);
     word = null;
@@ -267,7 +284,7 @@ async function renderWordOfDay() {
 async function renderQuoteOfDay() {
   let quote;
   try {
-    quote = await browser.runtime.sendMessage({ type: "get-quote-of-day" });
+    quote = await sendMessageWithRetry({ type: "get-quote-of-day" });
   } catch (error) {
     console.error("[quote-of-day] sendMessage failed:", error);
     quote = null;
@@ -300,7 +317,7 @@ const CURRENCY_SYMBOLS = { USD: "$", EUR: "€", JPY: "¥", AUD: "A$" };
 async function renderCurrencyWidget() {
   let rates;
   try {
-    rates = await browser.runtime.sendMessage({ type: "get-exchange-rates" });
+    rates = await sendMessageWithRetry({ type: "get-exchange-rates" });
   } catch (error) {
     console.error("[exchange-rates] sendMessage failed:", error);
     rates = null;
@@ -427,7 +444,7 @@ async function renderCalendar() {
 
   let events;
   try {
-    events = await browser.runtime.sendMessage({ type: "get-calendar-events" });
+    events = await sendMessageWithRetry({ type: "get-calendar-events" });
   } catch (error) {
     console.error("[calendar] sendMessage failed:", error);
     renderCalendarMessageInto(calendarWidget, "Unable to load your calendar right now.", { label: "Calendar" });
@@ -450,7 +467,7 @@ async function renderCalendar() {
 async function renderIcsFeedCalendar() {
   let events;
   try {
-    events = await browser.runtime.sendMessage({ type: "get-ics-feed-events" });
+    events = await sendMessageWithRetry({ type: "get-ics-feed-events" });
   } catch (error) {
     console.error("[ics-feed] sendMessage failed:", error);
     renderCalendarMessageInto(icsFeedWidget, "Nothing here right now.", { label: "Dollops Ice Cream" });
@@ -498,7 +515,7 @@ async function renderNews() {
   newsTrack.textContent = "Loading headlines…";
   let headlines;
   try {
-    headlines = await browser.runtime.sendMessage({ type: "get-headlines", feed: currentNewsFeed });
+    headlines = await sendMessageWithRetry({ type: "get-headlines", feed: currentNewsFeed });
   } catch (error) {
     console.error("[news] sendMessage failed:", error);
     newsTrack.textContent = "Unable to load BBC headlines right now.";
@@ -650,7 +667,7 @@ function setActiveSuggestion(index) {
 async function fetchSuggestions(query) {
   const requestId = ++suggestRequestId;
   try {
-    const results = await browser.runtime.sendMessage({
+    const results = await sendMessageWithRetry({
       type: "get-suggestions",
       engine: settings.searchEngine,
       query,

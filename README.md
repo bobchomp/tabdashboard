@@ -14,7 +14,8 @@ minutes, only if you've entered credentials in Settings), a hardcoded
 `.ics` subscription feed shown directly beneath it (cached ~15 minutes),
 the free Dictionary API (`api.dictionaryapi.dev`) for word-of-the-day,
 Frankfurter's free exchange-rate API (`api.frankfurter.app`, ECB rates) for
-the GBP rate ticker, and Quotable (`api.quotable.io`) for quote-of-the-day
+the GBP rate ticker, and DummyJSON (`dummyjson.com/quotes/random`) for
+quote-of-the-day
 (the latter two cached per calendar day, the word once resolved).
 
 ### iCloud calendar setup
