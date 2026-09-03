@@ -247,7 +247,7 @@ async function renderCalendar() {
   }
 
   if (!events.length) {
-    renderCalendarMessageInto(calendarWidget, "No events in the next 7 days.", { showLabel: true });
+    renderCalendarMessageInto(calendarWidget, "Nothing here for the next 7 days.", { showLabel: true });
     return;
   }
 
@@ -260,12 +260,12 @@ async function renderIcsFeedCalendar() {
     events = await browser.runtime.sendMessage({ type: "get-ics-feed-events" });
   } catch (error) {
     console.error("[ics-feed] sendMessage failed:", error);
-    icsFeedWidget.hidden = true;
+    renderCalendarMessageInto(icsFeedWidget, "Nothing here right now.", { showLabel: false });
     return;
   }
 
   if (!events || !events.length) {
-    icsFeedWidget.hidden = true;
+    renderCalendarMessageInto(icsFeedWidget, "Nothing here for the next 7 days.", { showLabel: false });
     return;
   }
 
