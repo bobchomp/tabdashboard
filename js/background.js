@@ -136,7 +136,7 @@ async function getOnThisDay() {
   const dateKey = todayMonthDay();
 
   const cached = (await browser.storage.local.get(ON_THIS_DAY_CACHE_KEY))[ON_THIS_DAY_CACHE_KEY];
-  if (cached && cached.dateKey === dateKey) {
+  if (cached && cached.dateKey === dateKey && Array.isArray(cached.events)) {
     console.log("[on-this-day] serving cached events for", dateKey);
     return cached.events;
   }
