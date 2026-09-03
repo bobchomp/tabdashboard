@@ -358,10 +358,14 @@ function renderCalendarMessageInto(container, message, { label }) {
     labelEl.textContent = label;
     container.appendChild(labelEl);
   }
+
+  const scroll = document.createElement("div");
+  scroll.className = "calendar-scroll";
   const empty = document.createElement("div");
   empty.className = "calendar-empty";
   empty.textContent = message;
-  container.appendChild(empty);
+  scroll.appendChild(empty);
+  container.appendChild(scroll);
 }
 
 function renderCalendarEventsInto(container, events, { label }) {
@@ -374,6 +378,10 @@ function renderCalendarEventsInto(container, events, { label }) {
     labelEl.textContent = label;
     container.appendChild(labelEl);
   }
+
+  const scroll = document.createElement("div");
+  scroll.className = "calendar-scroll";
+  container.appendChild(scroll);
 
   let currentDayKey = null;
   let currentDayEl = null;
@@ -392,7 +400,7 @@ function renderCalendarEventsInto(container, events, { label }) {
       heading.textContent = formatEventDayLabel(start);
       currentDayEl.appendChild(heading);
 
-      container.appendChild(currentDayEl);
+      scroll.appendChild(currentDayEl);
     }
 
     const eventEl = document.createElement("div");

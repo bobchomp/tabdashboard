@@ -325,10 +325,9 @@ body {
 }
 
 .calendar-widget {
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
 }
 
 #calendar-widget {
@@ -339,10 +338,17 @@ body {
   height: calc(29vh - 42px);
 }
 
+.calendar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .calendar-label {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex-shrink: 0;
   font-size: 17px;
   font-weight: 600;
   color: var(--text-dim);
