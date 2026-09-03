@@ -207,14 +207,14 @@ a.otd-event:hover {
   top: 8vh;
   left: 28px;
   width: 260px;
-  max-height: calc(92vh - 96px);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 32px;
 }
 
 .calendar-widget {
+  height: calc(46vh - 64px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
