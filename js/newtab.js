@@ -136,18 +136,17 @@ function renderOnThisDayEvent(event) {
   eventEl.className = "otd-event";
   eventEl.appendChild(document.createTextNode(event.text));
 
+  onThisDayEl.append(label, eventEl);
+
   if (event.url) {
-    eventEl.appendChild(document.createTextNode(" "));
     const link = document.createElement("a");
     link.className = "otd-link";
     link.href = event.url;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.textContent = "Find out more";
-    eventEl.appendChild(link);
+    onThisDayEl.appendChild(link);
   }
-
-  onThisDayEl.append(label, eventEl);
 }
 
 async function renderOnThisDay() {
@@ -178,15 +177,15 @@ onThisDayEl.addEventListener("click", async (event) => {
   if (isRotatingOnThisDay) return;
   isRotatingOnThisDay = true;
 
-  onThisDayEl.querySelectorAll(".otd-label, .otd-event").forEach((el) => el.classList.add("otd-fade-out"));
+  onThisDayEl.querySelectorAll(".otd-label, .otd-event, .otd-link").forEach((el) => el.classList.add("otd-fade-out"));
   await sleep(220);
 
   onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
   renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
 
-  onThisDayEl.querySelectorAll(".otd-label, .otd-event").forEach((el) => el.classList.add("otd-fade-out"));
+  onThisDayEl.querySelectorAll(".otd-label, .otd-event, .otd-link").forEach((el) => el.classList.add("otd-fade-out"));
   requestAnimationFrame(() => {
-    onThisDayEl.querySelectorAll(".otd-label, .otd-event").forEach((el) => el.classList.remove("otd-fade-out"));
+    onThisDayEl.querySelectorAll(".otd-label, .otd-event, .otd-link").forEach((el) => el.classList.remove("otd-fade-out"));
   });
 
   isRotatingOnThisDay = false;

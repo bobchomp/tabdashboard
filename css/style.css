@@ -194,21 +194,26 @@ body {
 }
 
 .otd-label.otd-fade-out,
-.otd-event.otd-fade-out {
+.otd-event.otd-fade-out,
+.otd-link.otd-fade-out {
   opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .otd-label,
-  .otd-event {
+  .otd-event,
+  .otd-link {
     transition: none;
   }
 }
 
 .otd-link {
+  display: block;
+  margin-top: 2px;
   color: var(--accent-text);
   font-weight: 500;
   text-decoration: underline;
+  transition: opacity 0.22s ease;
 }
 
 .otd-link:hover {
