@@ -219,7 +219,9 @@ async function caldavRequest(method, url, credentials, { headers = {}, body } = 
   }
   console.log(`[calendar] ${method} ${url} -> ${response.status}`);
   if (!response.ok) {
-    throw new Error(`CalDAV ${method} ${url} failed with status ${response.status}`);
+    const error = new Error(`CalDAV ${method} ${url} failed with status ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
   const text = await response.text();
   const xml = new DOMParser().parseFromString(text, "application/xml");
@@ -311,9 +313,10 @@ async function discoverCalendars(credentials, calendarHomeUrl) {
   return calendars;
 }
 
-async function discoverCalendarSetup(credentials) {
+async function discoverCalendarSetup(credentials, { forceRefresh = false } = {}) {
   const cached = (await browser.storage.local.get(CALENDAR_DISCOVERY_CACHE_KEY))[CALENDAR_DISCOVERY_CACHE_KEY];
   if (
+    !forceRefresh &&
     cached &&
     cached.appleId === credentials.appleId &&
     Date.now() - cached.discoveredAt < CALENDAR_DISCOVERY_CACHE_MS
@@ -402,6 +405,15 @@ function extractEvents(icsText) {
     .filter((event) => event.summary && event.start instanceof Date && !Number.isNaN(event.start.getTime()));
 }
 
+async function fetchAllCalendarEvents(credentials, calendars, rangeStart, rangeEnd) {
+  const allEvents = [];
+  for (const calendarUrl of calendars) {
+    const icsText = await fetchCalendarEvents(credentials, calendarUrl, rangeStart, rangeEnd);
+    allEvents.push(...extractEvents(icsText));
+  }
+  return allEvents;
+}
+
 async function getUpcomingCalendarEvents() {
   const credentials = await getCalendarCredentials();
   if (!credentials) return null;
@@ -416,16 +428,21 @@ async function getUpcomingCalendarEvents() {
     return cached.events;
   }
 
-  const calendars = await discoverCalendarSetup(credentials);
-  console.log("[calendar] discovered calendars:", calendars.length);
-
   const rangeStart = new Date();
   const rangeEnd = new Date(rangeStart.getTime() + CALENDAR_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
 
-  const allEvents = [];
-  for (const calendarUrl of calendars) {
-    const icsText = await fetchCalendarEvents(credentials, calendarUrl, rangeStart, rangeEnd);
-    allEvents.push(...extractEvents(icsText));
+  let calendars = await discoverCalendarSetup(credentials);
+  console.log("[calendar] discovered calendars:", calendars.length);
+
+  let allEvents;
+  try {
+    allEvents = await fetchAllCalendarEvents(credentials, calendars, rangeStart, rangeEnd);
+  } catch (error) {
+    if (error.status !== 404) throw error;
+    console.warn("[calendar] REPORT 404'd — discovery cache is stale, re-discovering calendars");
+    calendars = await discoverCalendarSetup(credentials, { forceRefresh: true });
+    console.log("[calendar] re-discovered calendars:", calendars.length);
+    allEvents = await fetchAllCalendarEvents(credentials, calendars, rangeStart, rangeEnd);
   }
 
   const events = allEvents
