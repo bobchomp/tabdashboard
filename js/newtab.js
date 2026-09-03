@@ -177,17 +177,13 @@ onThisDayEl.addEventListener("click", async (event) => {
   if (isRotatingOnThisDay) return;
   isRotatingOnThisDay = true;
 
-  onThisDayEl.querySelectorAll(".otd-label, .otd-event, .otd-link").forEach((el) => el.classList.add("otd-fade-out"));
+  onThisDayEl.classList.add("otd-fade-out");
   await sleep(220);
 
   onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
   renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
 
-  onThisDayEl.querySelectorAll(".otd-label, .otd-event, .otd-link").forEach((el) => el.classList.add("otd-fade-out"));
-  requestAnimationFrame(() => {
-    onThisDayEl.querySelectorAll(".otd-label, .otd-event, .otd-link").forEach((el) => el.classList.remove("otd-fade-out"));
-  });
-
+  onThisDayEl.classList.remove("otd-fade-out");
   isRotatingOnThisDay = false;
 });
 
