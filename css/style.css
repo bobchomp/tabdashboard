@@ -203,7 +203,9 @@ body {
 }
 
 .otd-link {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin-top: 2px;
   color: var(--accent-text);
   font-weight: 500;
@@ -212,6 +214,10 @@ body {
 
 .otd-link:hover {
   color: var(--text);
+}
+
+.otd-link-icon {
+  flex-shrink: 0;
 }
 
 @media (max-width: 1150px) {
