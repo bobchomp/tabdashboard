@@ -213,11 +213,18 @@ a.otd-event:hover {
 }
 
 .calendar-widget {
-  height: calc(46vh - 64px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+#calendar-widget {
+  height: calc(58vh - 84px);
+}
+
+#ics-feed-widget {
+  height: calc(29vh - 42px);
 }
 
 .calendar-label {
