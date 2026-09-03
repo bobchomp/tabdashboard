@@ -1,3 +1,5 @@
+const SETTINGS_STORAGE_KEY = "settings";
+
 const FEEDS = {
   news: "https://feeds.bbci.co.uk/news/rss.xml",
   sport: "https://feeds.bbci.co.uk/sport/rss.xml",
@@ -141,6 +143,261 @@ async function getOnThisDay() {
   return event;
 }
 
+const CALDAV_ROOT = "https://caldav.icloud.com/";
+const CALENDAR_DISCOVERY_CACHE_KEY = "calendarDiscoveryCache";
+const CALENDAR_EVENTS_CACHE_KEY = "calendarEventsCache";
+const CALENDAR_DISCOVERY_CACHE_MS = 24 * 60 * 60 * 1000;
+const CALENDAR_EVENTS_CACHE_MS = 15 * 60 * 1000;
+const CALENDAR_LOOKAHEAD_DAYS = 7;
+const CALENDAR_MAX_EVENTS = 8;
+const CALDAV_NS = "DAV:";
+const CALDAV_CAL_NS = "urn:ietf:params:xml:ns:caldav";
+
+async function getCalendarCredentials() {
+  const stored = (await browser.storage.local.get(SETTINGS_STORAGE_KEY))[SETTINGS_STORAGE_KEY] || {};
+  const appleId = (stored.appleId || "").trim();
+  const password = (stored.appSpecificPassword || "").trim();
+  if (!appleId || !password) return null;
+  return { appleId, password };
+}
+
+async function caldavRequest(method, url, credentials, { headers = {}, body } = {}) {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Basic ${btoa(`${credentials.appleId}:${credentials.password}`)}`,
+      "Content-Type": "application/xml; charset=utf-8",
+      ...headers,
+    },
+    body,
+  });
+  if (!response.ok) {
+    throw new Error(`CalDAV ${method} ${url} failed with status ${response.status}`);
+  }
+  const text = await response.text();
+  const xml = new DOMParser().parseFromString(text, "application/xml");
+  if (xml.querySelector("parsererror")) {
+    throw new Error(`CalDAV ${method} ${url} returned unparseable XML`);
+  }
+  return xml;
+}
+
+function findPropText(xmlDoc, tagNameNoNs) {
+  const els = xmlDoc.getElementsByTagNameNS("*", tagNameNoNs);
+  return els.length ? els[0].textContent.trim() : null;
+}
+
+// Finds the <href> nested INSIDE a specific property element (e.g.
+// current-user-principal), not just the first <href> in the document —
+// a multistatus response's outer <D:response> always has its own <href>
+// (echoing the request URL) ahead of the property-specific one.
+function findNestedHref(xmlDoc, propTagNoNs) {
+  const propEls = xmlDoc.getElementsByTagNameNS("*", propTagNoNs);
+  if (!propEls.length) return null;
+  const hrefEls = propEls[0].getElementsByTagNameNS("*", "href");
+  return hrefEls.length ? hrefEls[0].textContent.trim() : null;
+}
+
+function resolveHref(href, base) {
+  if (!href) return null;
+  return new URL(href, base).toString();
+}
+
+async function discoverPrincipalUrl(credentials) {
+  const body = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propfind xmlns:D="DAV:">
+  <D:prop><D:current-user-principal/></D:prop>
+</D:propfind>`;
+  const xml = await caldavRequest("PROPFIND", CALDAV_ROOT, credentials, { headers: { Depth: "0" }, body });
+  const href = findNestedHref(xml, "current-user-principal");
+  const url = resolveHref(href, CALDAV_ROOT);
+  if (!url) throw new Error("Could not discover CalDAV principal URL");
+  return url;
+}
+
+async function discoverCalendarHomeUrl(credentials, principalUrl) {
+  const body = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop><C:calendar-home-set/></D:prop>
+</D:propfind>`;
+  const xml = await caldavRequest("PROPFIND", principalUrl, credentials, { headers: { Depth: "0" }, body });
+  const href = findNestedHref(xml, "calendar-home-set");
+  const url = resolveHref(href, principalUrl);
+  if (!url) throw new Error("Could not discover CalDAV calendar home");
+  return url;
+}
+
+async function discoverCalendars(credentials, calendarHomeUrl) {
+  const body = `<?xml version="1.0" encoding="utf-8" ?>
+<D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop>
+    <D:resourcetype/>
+    <D:displayname/>
+    <C:supported-calendar-component-set/>
+  </D:prop>
+</D:propfind>`;
+  const xml = await caldavRequest("PROPFIND", calendarHomeUrl, credentials, { headers: { Depth: "1" }, body });
+
+  const responses = [...xml.getElementsByTagNameNS("*", "response")];
+  const calendars = [];
+
+  for (const responseEl of responses) {
+    const href = findPropText(responseEl, "href");
+    const url = resolveHref(href, calendarHomeUrl);
+    if (!url || url === calendarHomeUrl) continue;
+    if (/\/(inbox|outbox|notification)\/?$/.test(url)) continue;
+
+    const resourcetypeEls = [...responseEl.getElementsByTagNameNS("*", "resourcetype")];
+    const isCalendar = resourcetypeEls.some(
+      (rt) => rt.getElementsByTagNameNS(CALDAV_CAL_NS, "calendar").length > 0
+    );
+    if (!isCalendar) continue;
+
+    const supportedComponents = [...responseEl.getElementsByTagNameNS("*", "comp")].map((el) =>
+      el.getAttribute("name")
+    );
+    if (supportedComponents.length && !supportedComponents.includes("VEVENT")) continue;
+
+    calendars.push(url);
+  }
+
+  return calendars;
+}
+
+async function discoverCalendarSetup(credentials) {
+  const cached = (await browser.storage.local.get(CALENDAR_DISCOVERY_CACHE_KEY))[CALENDAR_DISCOVERY_CACHE_KEY];
+  if (
+    cached &&
+    cached.appleId === credentials.appleId &&
+    Date.now() - cached.discoveredAt < CALENDAR_DISCOVERY_CACHE_MS
+  ) {
+    return cached.calendars;
+  }
+
+  const principalUrl = await discoverPrincipalUrl(credentials);
+  const calendarHomeUrl = await discoverCalendarHomeUrl(credentials, principalUrl);
+  const calendars = await discoverCalendars(credentials, calendarHomeUrl);
+
+  await browser.storage.local.set({
+    [CALENDAR_DISCOVERY_CACHE_KEY]: { appleId: credentials.appleId, discoveredAt: Date.now(), calendars },
+  });
+  return calendars;
+}
+
+function formatCaldavDate(date) {
+  return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+async function fetchCalendarEvents(credentials, calendarUrl, rangeStart, rangeEnd) {
+  const body = `<?xml version="1.0" encoding="utf-8" ?>
+<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop>
+    <D:getetag/>
+    <C:calendar-data/>
+  </D:prop>
+  <C:filter>
+    <C:comp-filter name="VCALENDAR">
+      <C:comp-filter name="VEVENT">
+        <C:time-range start="${formatCaldavDate(rangeStart)}" end="${formatCaldavDate(rangeEnd)}"/>
+      </C:comp-filter>
+    </C:comp-filter>
+  </C:filter>
+</C:calendar-query>`;
+  const xml = await caldavRequest("REPORT", calendarUrl, credentials, { headers: { Depth: "1" }, body });
+  const dataEls = [...xml.getElementsByTagNameNS(CALDAV_CAL_NS, "calendar-data")];
+  return dataEls.map((el) => el.textContent).join("\n");
+}
+
+function unfoldIcs(text) {
+  return text.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
+}
+
+function parseIcsDate(value, isAllDay) {
+  const m = value.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi, s, z] = m;
+  if (isAllDay || !h) {
+    return new Date(Number(y), Number(mo) - 1, Number(d));
+  }
+  if (z) {
+    return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
+  }
+  return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s));
+}
+
+function parseVEventBlock(block) {
+  const lines = block.split(/\r\n|\n|\r/).filter((line) => line && !/^(BEGIN|END):/i.test(line));
+  const event = {};
+  for (const line of lines) {
+    const colonIndex = line.indexOf(":");
+    if (colonIndex === -1) continue;
+    const rawKey = line.slice(0, colonIndex);
+    const value = line.slice(colonIndex + 1);
+    const [key, ...params] = rawKey.split(";");
+    const isAllDay = params.some((p) => p.toUpperCase() === "VALUE=DATE");
+
+    if (key === "SUMMARY") event.summary = value;
+    else if (key === "DTSTART") {
+      event.start = parseIcsDate(value, isAllDay);
+      event.allDay = isAllDay;
+    } else if (key === "DTEND") {
+      event.end = parseIcsDate(value, isAllDay);
+    } else if (key === "UID") event.uid = value;
+  }
+  return event;
+}
+
+function extractEvents(icsText) {
+  const unfolded = unfoldIcs(icsText);
+  const blocks = unfolded.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) || [];
+  return blocks
+    .map(parseVEventBlock)
+    .filter((event) => event.summary && event.start instanceof Date && !Number.isNaN(event.start.getTime()));
+}
+
+async function getUpcomingCalendarEvents() {
+  const credentials = await getCalendarCredentials();
+  if (!credentials) return null;
+
+  const cached = (await browser.storage.local.get(CALENDAR_EVENTS_CACHE_KEY))[CALENDAR_EVENTS_CACHE_KEY];
+  if (
+    cached &&
+    cached.appleId === credentials.appleId &&
+    Date.now() - cached.fetchedAt < CALENDAR_EVENTS_CACHE_MS
+  ) {
+    console.log("[calendar] serving cached events:", cached.events.length);
+    return cached.events;
+  }
+
+  const calendars = await discoverCalendarSetup(credentials);
+  console.log("[calendar] discovered calendars:", calendars.length);
+
+  const rangeStart = new Date();
+  const rangeEnd = new Date(rangeStart.getTime() + CALENDAR_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+
+  const allEvents = [];
+  for (const calendarUrl of calendars) {
+    const icsText = await fetchCalendarEvents(credentials, calendarUrl, rangeStart, rangeEnd);
+    allEvents.push(...extractEvents(icsText));
+  }
+
+  const events = allEvents
+    .sort((a, b) => a.start - b.start)
+    .slice(0, CALENDAR_MAX_EVENTS)
+    .map((event) => ({
+      summary: event.summary,
+      start: event.start.toISOString(),
+      end: event.end instanceof Date ? event.end.toISOString() : null,
+      allDay: !!event.allDay,
+    }));
+
+  console.log("[calendar] events after filtering:", events.length);
+  await browser.storage.local.set({
+    [CALENDAR_EVENTS_CACHE_KEY]: { appleId: credentials.appleId, fetchedAt: Date.now(), events },
+  });
+  return events;
+}
+
 browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-headlines") {
     const feed = message.feed === "sport" ? "sport" : "news";
@@ -160,6 +417,13 @@ browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-on-this-day") {
     return getOnThisDay().catch((error) => {
       console.error("[on-this-day] getOnThisDay failed:", error);
+      throw error;
+    });
+  }
+
+  if (message?.type === "get-calendar-events") {
+    return getUpcomingCalendarEvents().catch((error) => {
+      console.error("[calendar] getUpcomingCalendarEvents failed:", error);
       throw error;
     });
   }

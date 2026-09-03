@@ -202,6 +202,82 @@ a.otd-event:hover {
   }
 }
 
+.calendar-widget {
+  position: fixed;
+  top: 8vh;
+  left: 28px;
+  width: 300px;
+  background: var(--surface);
+  border-radius: 26px;
+  box-shadow: 0 8px 20px var(--shadow);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calendar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.calendar-events {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.calendar-event {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.calendar-event-time {
+  flex-shrink: 0;
+  width: 56px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.calendar-event-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.calendar-empty {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.calendar-empty a {
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
+@media (max-width: 1150px) {
+  .calendar-widget {
+    display: none;
+  }
+}
+
+.settings-hint {
+  margin: -6px 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
 .search {
   width: 100%;
   position: relative;

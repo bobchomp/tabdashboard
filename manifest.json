@@ -21,7 +21,8 @@
     "https://suggestqueries.google.com/*",
     "https://api.bing.com/*",
     "https://ac.ecosia.org/*",
-    "https://en.wikipedia.org/*"
+    "https://en.wikipedia.org/*",
+    "https://caldav.icloud.com/*"
   ],
   "browser_specific_settings": {
     "gecko": {

@@ -7,7 +7,7 @@ const SEARCH_ENGINES = {
   bing: { label: "Bing", url: "https://www.bing.com/search?q=" },
   ecosia: { label: "Ecosia", url: "https://www.ecosia.org/search?q=" },
 };
-const DEFAULT_SETTINGS = { searchEngine: "duckduckgo" };
+const DEFAULT_SETTINGS = { searchEngine: "duckduckgo", appleId: "", appSpecificPassword: "" };
 
 const NEWS_SCROLL_PX_PER_SEC = 55;
 
@@ -67,6 +67,9 @@ const settingsForm = document.getElementById("settings-form");
 const settingsCancelBtn = document.getElementById("settings-cancel");
 const settingsCloseBtn = document.getElementById("settings-close");
 const searchEngineSelect = document.getElementById("search-engine-select");
+const appleIdInput = document.getElementById("apple-id-input");
+const applePasswordInput = document.getElementById("apple-password-input");
+const calendarWidget = document.getElementById("calendar-widget");
 
 let settings = { ...DEFAULT_SETTINGS };
 
@@ -151,6 +154,91 @@ async function renderOnThisDay() {
   onThisDayEl.append(label, eventEl);
 }
 
+function formatEventDayLabel(date) {
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return "Today";
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+  return date.toLocaleDateString("en-US", { weekday: "short" });
+}
+
+function formatEventTime(event) {
+  if (event.allDay) return "All day";
+  return new Date(event.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function renderCalendarMessage(message) {
+  calendarWidget.hidden = false;
+  calendarWidget.innerHTML = "";
+  const label = document.createElement("div");
+  label.className = "calendar-label";
+  label.textContent = "Calendar";
+  const empty = document.createElement("div");
+  empty.className = "calendar-empty";
+  empty.textContent = message;
+  calendarWidget.append(label, empty);
+}
+
+async function renderCalendar() {
+  if (!settings.appleId || !settings.appSpecificPassword) {
+    renderCalendarMessage("Add your Apple ID in Settings to see your calendar.");
+    return;
+  }
+
+  let events;
+  try {
+    events = await browser.runtime.sendMessage({ type: "get-calendar-events" });
+  } catch (error) {
+    console.error("[calendar] sendMessage failed:", error);
+    renderCalendarMessage("Unable to load your calendar right now.");
+    return;
+  }
+
+  if (!events) {
+    renderCalendarMessage("Add your Apple ID in Settings to see your calendar.");
+    return;
+  }
+
+  if (!events.length) {
+    renderCalendarMessage("No events in the next 7 days.");
+    return;
+  }
+
+  calendarWidget.hidden = false;
+  calendarWidget.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "calendar-label";
+  label.textContent = "Calendar";
+  calendarWidget.appendChild(label);
+
+  const list = document.createElement("div");
+  list.className = "calendar-events";
+
+  for (const event of events) {
+    const row = document.createElement("div");
+    row.className = "calendar-event";
+
+    const time = document.createElement("div");
+    time.className = "calendar-event-time";
+    const dayLine = document.createElement("div");
+    dayLine.textContent = formatEventDayLabel(new Date(event.start));
+    const timeLine = document.createElement("div");
+    timeLine.textContent = formatEventTime(event);
+    time.append(dayLine, timeLine);
+
+    const title = document.createElement("div");
+    title.className = "calendar-event-title";
+    title.textContent = event.summary;
+
+    row.append(time, title);
+    list.appendChild(row);
+  }
+
+  calendarWidget.appendChild(list);
+}
+
 function buildNewsRun(headlines) {
   const run = document.createDocumentFragment();
   headlines.forEach((headline, index) => {
@@ -224,15 +312,25 @@ function normalizeUrl(raw) {
 
 settingsBtn.addEventListener("click", () => {
   searchEngineSelect.value = settings.searchEngine;
+  appleIdInput.value = settings.appleId;
+  applePasswordInput.value = settings.appSpecificPassword;
   settingsDialog.showModal();
 });
 
 settingsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const credentialsChanged =
+    appleIdInput.value.trim() !== settings.appleId ||
+    applePasswordInput.value.trim() !== settings.appSpecificPassword;
+
   settings.searchEngine = searchEngineSelect.value;
+  settings.appleId = appleIdInput.value.trim();
+  settings.appSpecificPassword = applePasswordInput.value.trim();
   await saveSettings();
   applySettings();
   settingsDialog.close();
+
+  if (credentialsChanged) renderCalendar();
 });
 
 settingsCancelBtn.addEventListener("click", () => settingsDialog.close());
@@ -405,7 +503,7 @@ setInterval(saveNewsProgress, 10_000);
 renderGreeting();
 renderClocks();
 setInterval(renderClocks, 30_000);
-loadSettings();
+loadSettings().then(() => renderCalendar());
 renderOnThisDay();
 loadNewsProgress().then(() => {
   renderNewsLogo();

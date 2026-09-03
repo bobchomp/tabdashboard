@@ -15,6 +15,8 @@
 
   <div id="on-this-day" class="on-this-day"></div>
 
+  <div id="calendar-widget" class="calendar-widget" hidden></div>
+
   <main class="dashboard">
     <section class="clocks">
       <div class="clock-side">
@@ -84,6 +86,19 @@
           <option value="ecosia">Ecosia</option>
         </select>
       </label>
+      <label>
+        Apple ID
+        <input id="apple-id-input" type="email" placeholder="you@icloud.com" autocomplete="off">
+      </label>
+      <label>
+        App-specific password
+        <input id="apple-password-input" type="password" placeholder="xxxx-xxxx-xxxx-xxxx" autocomplete="off">
+      </label>
+      <p class="settings-hint">
+        For your iCloud calendar. Generate one at
+        <a href="https://appleid.apple.com" target="_blank" rel="noopener noreferrer">appleid.apple.com</a>
+        — not your real Apple ID password. Stored locally on this device only.
+      </p>
       <div class="dialog-actions">
         <span class="spacer"></span>
         <button type="button" id="settings-cancel">Cancel</button>

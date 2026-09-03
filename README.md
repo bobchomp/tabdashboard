@@ -1,13 +1,30 @@
 # Custom New Tab Dashboard
 
 A personal Firefox New Tab replacement: a search bar with live suggestions,
-a world clock, an "on this day" history fact, and a live BBC News/Sport
-ticker, with settings stored locally via `browser.storage.local`. Plain
-HTML/CSS/JS, no build step. External requests: the chosen search engine's
-suggestion API as you type (DuckDuckGo, Google, Bing, or Ecosia — whichever
-is selected in Settings), BBC's public RSS feeds for the news ticker (cached
-~15 minutes), and Wikipedia's public "on this day" API (cached per calendar
-day).
+a world clock, an "on this day" history fact, an iCloud calendar widget, and
+a live BBC News/Sport ticker, with settings stored locally via
+`browser.storage.local`. Plain HTML/CSS/JS, no build step. External
+requests: the chosen search engine's suggestion API as you type (DuckDuckGo,
+Google, Bing, or Ecosia — whichever is selected in Settings), BBC's public
+RSS feeds for the news ticker (cached ~15 minutes), Wikipedia's public "on
+this day" API (cached per calendar day), and — only if you've entered
+credentials in Settings — Apple's iCloud CalDAV server for the calendar
+widget (cached ~15 minutes).
+
+### iCloud calendar setup
+
+The calendar widget reads your iCloud calendar via CalDAV. To use it:
+
+1. Go to https://appleid.apple.com, sign in, and generate an **app-specific
+   password** (Sign-In and Security → App-Specific Passwords). Do not use
+   your real Apple ID password.
+2. Open the dashboard's Settings (gear icon, top right) and enter your Apple
+   ID email and that app-specific password.
+
+That password is stored as plain text in `browser.storage.local` — fine for
+a personal, locally-installed extension, but worth knowing since it isn't
+encrypted at rest. It's sent only to `caldav.icloud.com`, over HTTPS, via
+the background script.
 
 ## Try it out (temporary install)
 
@@ -55,6 +72,4 @@ key from https://addons.mozilla.org/developers/addon/api/key/.
 
 ## Roadmap
 
-- Sync quick links across devices via a small Supabase backend (deferred
-  until the widget set is finalized).
-- Additional widgets (weather, clock, notes, etc.) once decided.
+- More widgets as they come up (weather is the current front-runner).
