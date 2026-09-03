@@ -189,11 +189,16 @@ body {
   font-weight: 400;
   line-height: 1.5;
   color: var(--text);
-  text-decoration: none;
 }
 
-a.otd-event:hover {
+.otd-link {
   color: var(--accent-text);
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.otd-link:hover {
+  color: var(--text);
 }
 
 @media (max-width: 1150px) {

@@ -143,13 +143,19 @@ async function renderOnThisDay() {
   yearStrong.textContent = event.year;
   label.appendChild(yearStrong);
 
-  const eventEl = document.createElement(event.url ? "a" : "div");
+  const eventEl = document.createElement("div");
   eventEl.className = "otd-event";
-  eventEl.textContent = event.text;
+  eventEl.appendChild(document.createTextNode(event.text));
+
   if (event.url) {
-    eventEl.href = event.url;
-    eventEl.target = "_blank";
-    eventEl.rel = "noopener noreferrer";
+    eventEl.appendChild(document.createTextNode(" "));
+    const link = document.createElement("a");
+    link.className = "otd-link";
+    link.href = event.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Find out more";
+    eventEl.appendChild(link);
   }
 
   onThisDayEl.append(label, eventEl);
