@@ -252,6 +252,11 @@ body {
 }
 
 .calendar-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 6px;
+  background: var(--surface);
   font-size: 17px;
   font-weight: 600;
   color: var(--text-dim);
