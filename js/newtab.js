@@ -70,6 +70,7 @@ const searchEngineSelect = document.getElementById("search-engine-select");
 const appleIdInput = document.getElementById("apple-id-input");
 const applePasswordInput = document.getElementById("apple-password-input");
 const calendarWidget = document.getElementById("calendar-widget");
+const icsFeedWidget = document.getElementById("ics-feed-widget");
 
 let settings = { ...DEFAULT_SETTINGS };
 
@@ -163,50 +164,31 @@ function formatEventTime(event) {
   return new Date(event.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-function renderCalendarMessage(message) {
-  calendarWidget.hidden = false;
-  calendarWidget.innerHTML = "";
-  const label = document.createElement("div");
-  label.className = "calendar-label";
-  label.textContent = "Calendar";
+function renderCalendarMessageInto(container, message, { showLabel }) {
+  container.hidden = false;
+  container.innerHTML = "";
+  if (showLabel) {
+    const label = document.createElement("div");
+    label.className = "calendar-label";
+    label.textContent = "Calendar";
+    container.appendChild(label);
+  }
   const empty = document.createElement("div");
   empty.className = "calendar-empty";
   empty.textContent = message;
-  calendarWidget.append(label, empty);
+  container.appendChild(empty);
 }
 
-async function renderCalendar() {
-  if (!settings.appleId || !settings.appSpecificPassword) {
-    renderCalendarMessage("Add your Apple ID in Settings to see your calendar.");
-    return;
+function renderCalendarEventsInto(container, events, { showLabel }) {
+  container.hidden = false;
+  container.innerHTML = "";
+
+  if (showLabel) {
+    const label = document.createElement("div");
+    label.className = "calendar-label";
+    label.textContent = "Calendar";
+    container.appendChild(label);
   }
-
-  let events;
-  try {
-    events = await browser.runtime.sendMessage({ type: "get-calendar-events" });
-  } catch (error) {
-    console.error("[calendar] sendMessage failed:", error);
-    renderCalendarMessage("Unable to load your calendar right now.");
-    return;
-  }
-
-  if (!events) {
-    renderCalendarMessage("Add your Apple ID in Settings to see your calendar.");
-    return;
-  }
-
-  if (!events.length) {
-    renderCalendarMessage("No events in the next 7 days.");
-    return;
-  }
-
-  calendarWidget.hidden = false;
-  calendarWidget.innerHTML = "";
-
-  const label = document.createElement("div");
-  label.className = "calendar-label";
-  label.textContent = "Calendar";
-  calendarWidget.appendChild(label);
 
   let currentDayKey = null;
   let currentDayEl = null;
@@ -225,7 +207,7 @@ async function renderCalendar() {
       heading.textContent = formatEventDayLabel(start);
       currentDayEl.appendChild(heading);
 
-      calendarWidget.appendChild(currentDayEl);
+      container.appendChild(currentDayEl);
     }
 
     const eventEl = document.createElement("div");
@@ -242,6 +224,52 @@ async function renderCalendar() {
     eventEl.append(title, time);
     currentDayEl.appendChild(eventEl);
   }
+}
+
+async function renderCalendar() {
+  if (!settings.appleId || !settings.appSpecificPassword) {
+    renderCalendarMessageInto(calendarWidget, "Add your Apple ID in Settings to see your calendar.", { showLabel: true });
+    return;
+  }
+
+  let events;
+  try {
+    events = await browser.runtime.sendMessage({ type: "get-calendar-events" });
+  } catch (error) {
+    console.error("[calendar] sendMessage failed:", error);
+    renderCalendarMessageInto(calendarWidget, "Unable to load your calendar right now.", { showLabel: true });
+    return;
+  }
+
+  if (!events) {
+    renderCalendarMessageInto(calendarWidget, "Add your Apple ID in Settings to see your calendar.", { showLabel: true });
+    return;
+  }
+
+  if (!events.length) {
+    renderCalendarMessageInto(calendarWidget, "No events in the next 7 days.", { showLabel: true });
+    return;
+  }
+
+  renderCalendarEventsInto(calendarWidget, events, { showLabel: true });
+}
+
+async function renderIcsFeedCalendar() {
+  let events;
+  try {
+    events = await browser.runtime.sendMessage({ type: "get-ics-feed-events" });
+  } catch (error) {
+    console.error("[ics-feed] sendMessage failed:", error);
+    icsFeedWidget.hidden = true;
+    return;
+  }
+
+  if (!events || !events.length) {
+    icsFeedWidget.hidden = true;
+    return;
+  }
+
+  renderCalendarEventsInto(icsFeedWidget, events, { showLabel: false });
 }
 
 function buildNewsRun(headlines) {
@@ -509,6 +537,7 @@ renderGreeting();
 renderClocks();
 setInterval(renderClocks, 30_000);
 loadSettings().then(() => renderCalendar());
+renderIcsFeedCalendar();
 renderOnThisDay();
 loadNewsProgress().then(() => {
   renderNewsLogo();

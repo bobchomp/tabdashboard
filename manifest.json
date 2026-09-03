@@ -24,7 +24,8 @@
     "https://api.bing.com/*",
     "https://ac.ecosia.org/*",
     "https://en.wikipedia.org/*",
-    "https://*.icloud.com/*"
+    "https://*.icloud.com/*",
+    "https://admin.dollopsicecream.co.uk/*"
   ],
   "browser_specific_settings": {
     "gecko": {

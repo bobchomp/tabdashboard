@@ -434,6 +434,46 @@ async function getUpcomingCalendarEvents() {
   return events;
 }
 
+const ICS_FEED_URL = "https://admin.dollopsicecream.co.uk/api/admin/ical?token=lDzWdnkupiLDYUUifZl7Luc3wygpundy";
+const ICS_FEED_CACHE_KEY = "icsFeedCache";
+const ICS_FEED_CACHE_MS = 15 * 60 * 1000;
+const ICS_FEED_LOOKAHEAD_DAYS = 7;
+const ICS_FEED_MAX_EVENTS = 8;
+
+async function getIcsFeedEvents() {
+  const cached = (await browser.storage.local.get(ICS_FEED_CACHE_KEY))[ICS_FEED_CACHE_KEY];
+  if (cached && Date.now() - cached.fetchedAt < ICS_FEED_CACHE_MS) {
+    console.log("[ics-feed] serving cached events:", cached.events.length);
+    return cached.events;
+  }
+
+  console.log("[ics-feed] fetching", ICS_FEED_URL);
+  const response = await fetch(ICS_FEED_URL);
+  console.log("[ics-feed] response status:", response.status, response.ok);
+  if (!response.ok) {
+    throw new Error(`ICS feed request failed with status ${response.status}`);
+  }
+
+  const text = await response.text();
+  const rangeStart = new Date();
+  const rangeEnd = new Date(rangeStart.getTime() + ICS_FEED_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+
+  const events = extractEvents(text)
+    .filter((event) => event.start >= rangeStart && event.start <= rangeEnd)
+    .sort((a, b) => a.start - b.start)
+    .slice(0, ICS_FEED_MAX_EVENTS)
+    .map((event) => ({
+      summary: event.summary,
+      start: event.start.toISOString(),
+      end: event.end instanceof Date ? event.end.toISOString() : null,
+      allDay: !!event.allDay,
+    }));
+
+  console.log("[ics-feed] events after filtering:", events.length);
+  await browser.storage.local.set({ [ICS_FEED_CACHE_KEY]: { fetchedAt: Date.now(), events } });
+  return events;
+}
+
 browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-headlines") {
     const feed = message.feed === "sport" ? "sport" : "news";
@@ -460,6 +500,13 @@ browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-calendar-events") {
     return getUpcomingCalendarEvents().catch((error) => {
       console.error("[calendar] getUpcomingCalendarEvents failed:", error);
+      throw error;
+    });
+  }
+
+  if (message?.type === "get-ics-feed-events") {
+    return getIcsFeedEvents().catch((error) => {
+      console.error("[ics-feed] getIcsFeedEvents failed:", error);
       throw error;
     });
   }

@@ -1,15 +1,16 @@
 # Custom New Tab Dashboard
 
 A personal Firefox New Tab replacement: a search bar with live suggestions,
-a world clock, an "on this day" history fact, an iCloud calendar widget, and
-a live BBC News/Sport ticker, with settings stored locally via
-`browser.storage.local`. Plain HTML/CSS/JS, no build step. External
-requests: the chosen search engine's suggestion API as you type (DuckDuckGo,
-Google, Bing, or Ecosia — whichever is selected in Settings), BBC's public
-RSS feeds for the news ticker (cached ~15 minutes), Wikipedia's public "on
-this day" API (cached per calendar day), and — only if you've entered
-credentials in Settings — Apple's iCloud CalDAV server for the calendar
-widget (cached ~15 minutes).
+a world clock, an "on this day" history fact, a calendar widget (iCloud plus
+a second subscribed ICS feed), and a live BBC News/Sport ticker, with
+settings stored locally via `browser.storage.local`. Plain HTML/CSS/JS, no
+build step. External requests: the chosen search engine's suggestion API as
+you type (DuckDuckGo, Google, Bing, or Ecosia — whichever is selected in
+Settings), BBC's public RSS feeds for the news ticker (cached ~15 minutes),
+Wikipedia's public "on this day" API (cached per calendar day), Apple's
+iCloud CalDAV server for the calendar widget (cached ~15 minutes, only if
+you've entered credentials in Settings), and a hardcoded `.ics` subscription
+feed shown directly beneath it (cached ~15 minutes).
 
 ### iCloud calendar setup
 
@@ -32,9 +33,20 @@ iCloud's CalDAV server — built for desktop calendar apps, not browsers —
 doesn't send the `Access-Control-*` headers a preflight needs. The
 extension works around this with a `webRequest` listener (`webRequest` +
 `webRequestBlocking` permissions) that adds those headers onto responses
-from `caldav.icloud.com` only — the same technique standalone "CORS
+from any `icloud.com` host only — the same technique standalone "CORS
 unblock" extensions use, just scoped to this one host instead of every
 site.
+
+### Second calendar (ICS feed)
+
+A second calendar — a `webcal://` subscription link — is fetched and shown
+directly beneath the iCloud one, in the same plain style with no heading of
+its own. The feed URL (which includes an access token) is hardcoded in
+`js/background.js`; since that file is committed to this repo, treat the
+repo itself as sensitive if it ever needs to be shared or made public.
+Unlike the iCloud calendar, this is a plain `.ics` file over a normal GET
+request, so it didn't need the CORS workaround above — just a host
+permission for that domain.
 
 ## Try it out (temporary install)
 

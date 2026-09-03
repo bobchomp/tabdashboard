@@ -202,11 +202,17 @@ a.otd-event:hover {
   }
 }
 
-.calendar-widget {
+.calendar-stack {
   position: fixed;
   top: 8vh;
   left: 28px;
-  width: 240px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.calendar-widget {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -262,7 +268,7 @@ a.otd-event:hover {
 }
 
 @media (max-width: 1150px) {
-  .calendar-widget {
+  .calendar-stack {
     display: none;
   }
 }
