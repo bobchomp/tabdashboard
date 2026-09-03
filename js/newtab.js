@@ -212,14 +212,14 @@ function formatEventTime(event) {
   return new Date(event.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-function renderCalendarMessageInto(container, message, { showLabel }) {
+function renderCalendarMessageInto(container, message, { label }) {
   container.hidden = false;
   container.innerHTML = "";
-  if (showLabel) {
-    const label = document.createElement("div");
-    label.className = "calendar-label";
-    label.textContent = "Calendar";
-    container.appendChild(label);
+  if (label) {
+    const labelEl = document.createElement("div");
+    labelEl.className = "calendar-label";
+    labelEl.textContent = label;
+    container.appendChild(labelEl);
   }
   const empty = document.createElement("div");
   empty.className = "calendar-empty";
@@ -227,15 +227,15 @@ function renderCalendarMessageInto(container, message, { showLabel }) {
   container.appendChild(empty);
 }
 
-function renderCalendarEventsInto(container, events, { showLabel }) {
+function renderCalendarEventsInto(container, events, { label }) {
   container.hidden = false;
   container.innerHTML = "";
 
-  if (showLabel) {
-    const label = document.createElement("div");
-    label.className = "calendar-label";
-    label.textContent = "Calendar";
-    container.appendChild(label);
+  if (label) {
+    const labelEl = document.createElement("div");
+    labelEl.className = "calendar-label";
+    labelEl.textContent = label;
+    container.appendChild(labelEl);
   }
 
   let currentDayKey = null;
@@ -276,7 +276,7 @@ function renderCalendarEventsInto(container, events, { showLabel }) {
 
 async function renderCalendar() {
   if (!settings.appleId || !settings.appSpecificPassword) {
-    renderCalendarMessageInto(calendarWidget, "Add your Apple ID in Settings to see your calendar.", { showLabel: true });
+    renderCalendarMessageInto(calendarWidget, "Add your Apple ID in Settings to see your calendar.", { label: "Calendar" });
     return;
   }
 
@@ -285,21 +285,21 @@ async function renderCalendar() {
     events = await browser.runtime.sendMessage({ type: "get-calendar-events" });
   } catch (error) {
     console.error("[calendar] sendMessage failed:", error);
-    renderCalendarMessageInto(calendarWidget, "Unable to load your calendar right now.", { showLabel: true });
+    renderCalendarMessageInto(calendarWidget, "Unable to load your calendar right now.", { label: "Calendar" });
     return;
   }
 
   if (!events) {
-    renderCalendarMessageInto(calendarWidget, "Add your Apple ID in Settings to see your calendar.", { showLabel: true });
+    renderCalendarMessageInto(calendarWidget, "Add your Apple ID in Settings to see your calendar.", { label: "Calendar" });
     return;
   }
 
   if (!events.length) {
-    renderCalendarMessageInto(calendarWidget, "Nothing here for the next 7 days.", { showLabel: true });
+    renderCalendarMessageInto(calendarWidget, "Nothing here for the next 7 days.", { label: "Calendar" });
     return;
   }
 
-  renderCalendarEventsInto(calendarWidget, events, { showLabel: true });
+  renderCalendarEventsInto(calendarWidget, events, { label: "Calendar" });
 }
 
 async function renderIcsFeedCalendar() {
@@ -308,16 +308,16 @@ async function renderIcsFeedCalendar() {
     events = await browser.runtime.sendMessage({ type: "get-ics-feed-events" });
   } catch (error) {
     console.error("[ics-feed] sendMessage failed:", error);
-    renderCalendarMessageInto(icsFeedWidget, "Nothing here right now.", { showLabel: false });
+    renderCalendarMessageInto(icsFeedWidget, "Nothing here right now.", { label: "Dollops Ice Cream" });
     return;
   }
 
   if (!events || !events.length) {
-    renderCalendarMessageInto(icsFeedWidget, "Nothing here for the next 7 days.", { showLabel: false });
+    renderCalendarMessageInto(icsFeedWidget, "Nothing here for the next 7 days.", { label: "Dollops Ice Cream" });
     return;
   }
 
-  renderCalendarEventsInto(icsFeedWidget, events, { showLabel: false });
+  renderCalendarEventsInto(icsFeedWidget, events, { label: "Dollops Ice Cream" });
 }
 
 function buildNewsRun(headlines) {
