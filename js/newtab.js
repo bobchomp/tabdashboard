@@ -149,6 +149,33 @@ function renderOnThisDayEvent(event) {
   }
 }
 
+const ON_THIS_DAY_ROTATE_MS = 12_000;
+
+let isRotatingOnThisDay = false;
+let onThisDayAutoTimer = null;
+
+async function advanceOnThisDay() {
+  if (onThisDayEvents.length < 2) return;
+  if (isRotatingOnThisDay) return;
+  isRotatingOnThisDay = true;
+
+  onThisDayEl.classList.add("otd-fade-out");
+  await sleep(220);
+
+  onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
+  renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+
+  onThisDayEl.classList.remove("otd-fade-out");
+  isRotatingOnThisDay = false;
+}
+
+function startOnThisDayAutoRotate() {
+  if (onThisDayAutoTimer) clearInterval(onThisDayAutoTimer);
+  onThisDayAutoTimer = null;
+  if (onThisDayEvents.length < 2) return;
+  onThisDayAutoTimer = setInterval(advanceOnThisDay, ON_THIS_DAY_ROTATE_MS);
+}
+
 async function renderOnThisDay() {
   let events;
   try {
@@ -167,24 +194,13 @@ async function renderOnThisDay() {
 
   onThisDayIndex = 0;
   renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+  startOnThisDayAutoRotate();
 }
 
-let isRotatingOnThisDay = false;
-
-onThisDayEl.addEventListener("click", async (event) => {
+onThisDayEl.addEventListener("click", (event) => {
   if (event.target.closest("a")) return;
-  if (onThisDayEvents.length < 2) return;
-  if (isRotatingOnThisDay) return;
-  isRotatingOnThisDay = true;
-
-  onThisDayEl.classList.add("otd-fade-out");
-  await sleep(220);
-
-  onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
-  renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
-
-  onThisDayEl.classList.remove("otd-fade-out");
-  isRotatingOnThisDay = false;
+  advanceOnThisDay();
+  startOnThisDayAutoRotate();
 });
 
 function formatEventDayLabel(date) {
