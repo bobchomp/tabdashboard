@@ -348,12 +348,10 @@ async function handleAutoTick() {
   if (currencyRates.length >= 2) {
     entries.push({ el: currencyWidgetEl, advance: advanceCurrencyIndex });
   }
-  if (sunriseTimes && weatherData) {
-    entries.push({ el: sunriseWidgetEl, advance: advanceSunriseWidgetView });
-  }
   if (tickCount % 2 === 0) {
     if (onThisDayEvents.length >= 2) entries.push({ el: onThisDayEl, advance: advanceOnThisDayIndex });
     if (quoteOfDayItems.length >= 2) entries.push({ el: quoteWidgetEl, advance: advanceQuoteIndex });
+    if (sunriseTimes && weatherData) entries.push({ el: sunriseWidgetEl, advance: advanceSunriseWidgetView });
   }
 
   await fadeAndAdvance(entries);
