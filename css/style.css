@@ -132,24 +132,27 @@ body {
 }
 
 .settings-btn {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  position: fixed;
+  top: 28px;
+  right: 28px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border-radius: 50%;
   border: none;
-  background: var(--field-fill);
+  background: var(--surface);
   color: var(--text-dim);
+  box-shadow: 0 8px 20px var(--shadow);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
+  transition: box-shadow 0.15s, transform 0.1s;
 }
 
 .settings-btn:hover {
-  background: var(--border);
-  transform: rotate(20deg);
+  box-shadow: 0 12px 26px var(--shadow-strong);
+  transform: translateY(-2px) rotate(20deg);
 }
 
 .right-stack {
