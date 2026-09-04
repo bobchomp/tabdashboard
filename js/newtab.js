@@ -619,7 +619,82 @@ function formatEventTime(event) {
   return new Date(event.start).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+// Slowly, continuously auto-scrolls a box up and down between its ends,
+// pausing briefly at each end and whenever the user hovers/touches/wheels
+// it. Re-render calls a fresh scroll box into existence each time (see
+// container._stopAutoScroll below), so this returns a cleanup function the
+// caller stops before starting a new one, rather than leaving the previous
+// box's rAF loop running forever on a detached element.
+function enableAutoScroll(el, { speed = 0.3, pauseMs = 1800 } = {}) {
+  let direction = 1;
+  let paused = false;
+  let rafId = null;
+  let waitTimer = null;
+  let resumeTimer = null;
+  // scrollTop is rounded to a whole pixel by the browser on every read, so
+  // el.scrollTop += 0.3 never accumulates (each frame reads back the same
+  // rounded value it just wrote). Track the true position separately as a
+  // float and only ever write it to the DOM, never read it back mid-scroll.
+  let position = el.scrollTop;
+
+  const maxScroll = () => el.scrollHeight - el.clientHeight;
+
+  function waitThenReverse() {
+    paused = true;
+    waitTimer = setTimeout(() => {
+      direction *= -1;
+      paused = false;
+    }, pauseMs);
+  }
+
+  function step() {
+    const limit = maxScroll();
+    if (!paused && limit > 1) {
+      position += direction * speed;
+      if (direction === 1 && position >= limit) {
+        position = limit;
+        el.scrollTop = position;
+        waitThenReverse();
+      } else if (direction === -1 && position <= 0) {
+        position = 0;
+        el.scrollTop = position;
+        waitThenReverse();
+      } else {
+        el.scrollTop = position;
+      }
+    }
+    rafId = requestAnimationFrame(step);
+  }
+
+  function pauseForInteraction() {
+    paused = true;
+    if (resumeTimer) clearTimeout(resumeTimer);
+  }
+  function resumeAfterInteraction() {
+    if (resumeTimer) clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(() => {
+      position = el.scrollTop; // pick up wherever the user left it
+      paused = false;
+    }, 2000);
+  }
+
+  el.addEventListener("mouseenter", pauseForInteraction);
+  el.addEventListener("mouseleave", resumeAfterInteraction);
+  el.addEventListener("wheel", resumeAfterInteraction, { passive: true });
+  el.addEventListener("touchstart", pauseForInteraction, { passive: true });
+  el.addEventListener("touchend", resumeAfterInteraction, { passive: true });
+
+  rafId = requestAnimationFrame(step);
+
+  return () => {
+    cancelAnimationFrame(rafId);
+    if (waitTimer) clearTimeout(waitTimer);
+    if (resumeTimer) clearTimeout(resumeTimer);
+  };
+}
+
 function renderCalendarMessageInto(container, message, { label }) {
+  container._stopAutoScroll?.();
   container.hidden = false;
   container.innerHTML = "";
   if (label) {
@@ -636,9 +711,11 @@ function renderCalendarMessageInto(container, message, { label }) {
   empty.textContent = message;
   scroll.appendChild(empty);
   container.appendChild(scroll);
+  container._stopAutoScroll = enableAutoScroll(scroll);
 }
 
 function renderCalendarEventsInto(container, events, { label }) {
+  container._stopAutoScroll?.();
   container.hidden = false;
   container.innerHTML = "";
 
@@ -652,6 +729,7 @@ function renderCalendarEventsInto(container, events, { label }) {
   const scroll = document.createElement("div");
   scroll.className = "calendar-scroll";
   container.appendChild(scroll);
+  container._stopAutoScroll = enableAutoScroll(scroll);
 
   let currentDayKey = null;
   let currentDayEl = null;
