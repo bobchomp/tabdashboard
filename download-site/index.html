@@ -22,7 +22,7 @@
 
     <ol class="steps">
       <li>Click the download button above.</li>
-      <li>Open the downloaded <code>tabdashboard.xpi</code> file with Firefox (or drag it into a Firefox window).</li>
+      <li>Open the downloaded <code>.xpi</code> file with Firefox (or drag it into a Firefox window).</li>
       <li>Click <strong>Add</strong> when Firefox asks to confirm the install.</li>
     </ol>
 
@@ -41,6 +41,7 @@
           metaEl.textContent = "";
           return;
         }
+        document.getElementById("download-link").download = `tabdashboard-${data.version}.xpi`;
         const updated = data.publishedAt
           ? new Date(data.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
           : null;
