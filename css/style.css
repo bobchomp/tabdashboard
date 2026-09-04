@@ -625,6 +625,15 @@ dialog {
   box-shadow: 0 24px 60px var(--shadow-strong);
 }
 
+#settings-dialog {
+  width: min(520px, 92vw);
+}
+
+#settings-dialog .refresh-btn {
+  flex: 1;
+  justify-content: center;
+}
+
 dialog::backdrop {
   background: rgba(74, 68, 96, 0.18);
 }
