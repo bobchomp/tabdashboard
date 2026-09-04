@@ -173,7 +173,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: opacity 0.22s ease;
+  transition: opacity 0.22s ease, height 0.32s ease;
 }
 
 .on-this-day.rotator-fade-out,
@@ -236,7 +236,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: opacity 0.22s ease;
+  transition: opacity 0.22s ease, height 0.32s ease;
 }
 
 .side-widget-label {
@@ -333,7 +333,7 @@ body {
   flex-shrink: 0;
   font-size: 17px;
   font-weight: 600;
-  color: var(--text-dim);
+  color: #000;
 }
 
 .calendar-day {

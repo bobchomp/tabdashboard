@@ -216,6 +216,39 @@ const ROTATE_MS = 12_000;
 let isRotating = false;
 let rotateAutoTimer = null;
 
+// A card's height is auto (driven by its content), and CSS can't transition
+// to/from "auto" directly. Lock the card to its current pixel height, swap
+// the content, measure the new natural height, then animate between the two
+// explicit pixel values so the height change — and the reflow it causes in
+// the cards below it — is smooth instead of an instant jump.
+function animateHeightChange(el, updateContent) {
+  const startHeight = el.offsetHeight;
+  el.style.height = `${startHeight}px`;
+  el.style.overflow = "hidden";
+
+  updateContent();
+
+  el.style.height = "auto";
+  const endHeight = el.offsetHeight;
+  el.style.height = `${startHeight}px`;
+  void el.offsetHeight; // force the browser to commit startHeight before animating
+
+  const cleanup = () => {
+    el.style.height = "";
+    el.style.overflow = "";
+    el.removeEventListener("transitionend", onTransitionEnd);
+  };
+  const onTransitionEnd = (event) => {
+    if (event.propertyName === "height") cleanup();
+  };
+  el.addEventListener("transitionend", onTransitionEnd);
+  setTimeout(cleanup, 400); // fallback in case transitionend never fires
+
+  requestAnimationFrame(() => {
+    el.style.height = `${endHeight}px`;
+  });
+}
+
 async function advanceRotators() {
   if (isRotating) return;
   const rotateOnThisDay = onThisDayEvents.length >= 2;
@@ -228,13 +261,17 @@ async function advanceRotators() {
   await sleep(220);
 
   if (rotateOnThisDay) {
-    onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
-    renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+    animateHeightChange(onThisDayEl, () => {
+      onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
+      renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+    });
     onThisDayEl.classList.remove("rotator-fade-out");
   }
   if (rotateQuote) {
-    quoteOfDayIndex = (quoteOfDayIndex + 1) % quoteOfDayItems.length;
-    renderQuoteOfDayItem(quoteOfDayItems[quoteOfDayIndex]);
+    animateHeightChange(quoteWidgetEl, () => {
+      quoteOfDayIndex = (quoteOfDayIndex + 1) % quoteOfDayItems.length;
+      renderQuoteOfDayItem(quoteOfDayItems[quoteOfDayIndex]);
+    });
     quoteWidgetEl.classList.remove("rotator-fade-out");
   }
 
