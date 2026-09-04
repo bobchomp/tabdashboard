@@ -85,7 +85,7 @@ const SUGGEST_URLS = {
   bing: (q) => `https://api.bing.com/osjson.aspx?query=${encodeURIComponent(q)}`,
   ecosia: (q) => `https://ac.ecosia.org/autocomplete?q=${encodeURIComponent(q)}&type=list`,
 };
-const SUGGEST_MAX_RESULTS = 8;
+const SUGGEST_MAX_RESULTS = 6;
 
 function parseSuggestions(data) {
   if (!Array.isArray(data)) return [];
