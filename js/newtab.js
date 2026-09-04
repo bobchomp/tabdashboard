@@ -133,6 +133,14 @@ function renderGreeting() {
   greetingEl.textContent = `${greeting}, ${settings.userName || DEFAULT_SETTINGS.userName}`;
 }
 
+// en-GB's default weekday+day+month formatting omits the comma
+// ("Friday 4 September"), so build it from two calls instead.
+function formatFullDate(date, timeZone) {
+  const weekday = date.toLocaleDateString("en-GB", { weekday: "long", timeZone });
+  const dayMonth = date.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone });
+  return `${weekday}, ${dayMonth}`;
+}
+
 function renderClocks() {
   const now = new Date();
   for (const el of clockEls) {
@@ -146,10 +154,7 @@ function renderClocks() {
 
     const dateEl = el.querySelector(".clock-date");
     if (dateEl) {
-      const dateTimeZone = timeZone === "local" ? undefined : timeZone;
-      const weekday = now.toLocaleDateString("en-GB", { weekday: "long", timeZone: dateTimeZone });
-      const dayMonth = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: dateTimeZone });
-      dateEl.textContent = `${weekday}, ${dayMonth}`;
+      dateEl.textContent = formatFullDate(now, timeZone === "local" ? undefined : timeZone);
     }
   }
 }
@@ -598,7 +603,15 @@ quoteWidgetEl.addEventListener("click", () => {
 });
 
 function formatEventDayLabel(date) {
-  return date.toLocaleDateString("en-US", { weekday: "long" });
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayStart = new Date(date);
+  dayStart.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((dayStart - today) / (24 * 60 * 60 * 1000));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  return formatFullDate(date);
 }
 
 function formatEventTime(event) {
