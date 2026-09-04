@@ -285,6 +285,31 @@ body {
   color: var(--text);
 }
 
+.sunrise-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sunrise-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sunrise-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.sunrise-time {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 @media (max-width: 1150px) {
   .right-stack {
     display: none;

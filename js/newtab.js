@@ -53,6 +53,7 @@ const newsLogoBtn = document.getElementById("news-logo");
 const onThisDayEl = document.getElementById("on-this-day");
 const currencyWidgetEl = document.getElementById("currency-widget");
 const quoteWidgetEl = document.getElementById("quote-widget");
+const sunriseWidgetEl = document.getElementById("sunrise-widget");
 
 let currentNewsFeed = "news";
 let newsProgress = { news: 0, sport: 0 };
@@ -396,6 +397,57 @@ async function renderCurrencyWidget() {
     renderCurrencyRate(currencyRates[currencyIndex]);
   }
   startAutoRotate();
+}
+
+function formatDayTime(isoString) {
+  return new Date(isoString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+async function renderSunriseWidget() {
+  let times;
+  try {
+    times = await sendMessageWithRetry({ type: "get-sunrise-sunset" });
+  } catch (error) {
+    console.error("[sunrise-sunset] sendMessage failed:", error);
+    times = null;
+  }
+
+  if (!times || !times.sunrise || !times.sunset) {
+    renderSideWidgetMessage(sunriseWidgetEl, "Sunrise & sunset", "Unable to load sunrise/sunset times today.");
+    return;
+  }
+
+  sunriseWidgetEl.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "side-widget-label";
+  label.textContent = "Sunrise & sunset (Inverness)";
+
+  const rows = document.createElement("div");
+  rows.className = "sunrise-rows";
+
+  const entries = [
+    ["Sunrise", times.sunrise],
+    ["Sunset", times.sunset],
+  ];
+
+  for (const [name, iso] of entries) {
+    const row = document.createElement("div");
+    row.className = "sunrise-row";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "sunrise-label";
+    nameEl.textContent = name;
+
+    const timeEl = document.createElement("div");
+    timeEl.className = "sunrise-time";
+    timeEl.textContent = formatDayTime(iso);
+
+    row.append(nameEl, timeEl);
+    rows.appendChild(row);
+  }
+
+  sunriseWidgetEl.append(label, rows);
 }
 
 onThisDayEl.addEventListener("click", (event) => {
@@ -806,6 +858,7 @@ loadSettings().then(() => renderCalendar());
 renderIcsFeedCalendar();
 renderOnThisDay();
 renderCurrencyWidget();
+renderSunriseWidget();
 renderQuoteOfDay();
 loadNewsProgress().then(() => {
   renderNewsLogo();

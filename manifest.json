@@ -27,7 +27,8 @@
     "https://*.icloud.com/*",
     "https://admin.dollopsicecream.co.uk/*",
     "https://dummyjson.com/*",
-    "https://api.frankfurter.app/*"
+    "https://api.frankfurter.app/*",
+    "https://api.sunrise-sunset.org/*"
   ],
   "browser_specific_settings": {
     "gecko": {

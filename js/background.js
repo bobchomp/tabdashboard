@@ -263,6 +263,36 @@ async function getExchangeRates() {
   return rates;
 }
 
+const SUNRISE_SUNSET_CACHE_KEY = "sunriseSunsetCache";
+const INVERNESS_LAT = 57.4778;
+const INVERNESS_LNG = -4.2247;
+
+async function getSunriseSunset() {
+  const dateKey = todayDateKey();
+
+  const cached = (await browser.storage.local.get(SUNRISE_SUNSET_CACHE_KEY))[SUNRISE_SUNSET_CACHE_KEY];
+  if (cached && cached.dateKey === dateKey && cached.sunrise && cached.sunset) {
+    console.log("[sunrise-sunset] serving cached times for", dateKey);
+    return { sunrise: cached.sunrise, sunset: cached.sunset };
+  }
+
+  const url = `https://api.sunrise-sunset.org/json?lat=${INVERNESS_LAT}&lng=${INVERNESS_LNG}&formatted=0`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Sunrise/sunset request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (data?.status !== "OK" || !data.results?.sunrise || !data.results?.sunset) {
+    throw new Error("Unexpected sunrise/sunset response shape");
+  }
+
+  const result = { sunrise: data.results.sunrise, sunset: data.results.sunset };
+  console.log("[sunrise-sunset] fetched times for", dateKey);
+  await browser.storage.local.set({ [SUNRISE_SUNSET_CACHE_KEY]: { dateKey, ...result } });
+  return result;
+}
+
 const CALDAV_ROOT = "https://caldav.icloud.com/";
 const CALENDAR_DISCOVERY_CACHE_KEY = "calendarDiscoveryCache";
 const CALENDAR_EVENTS_CACHE_KEY = "calendarEventsCache";
@@ -630,6 +660,13 @@ browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-exchange-rates") {
     return getExchangeRates().catch((error) => {
       console.error("[exchange-rates] getExchangeRates failed:", error);
+      throw error;
+    });
+  }
+
+  if (message?.type === "get-sunrise-sunset") {
+    return getSunriseSunset().catch((error) => {
+      console.error("[sunrise-sunset] getSunriseSunset failed:", error);
       throw error;
     });
   }
