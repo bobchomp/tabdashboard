@@ -186,77 +186,6 @@ function todayDateKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const WORD_OF_DAY_CACHE_KEY = "wordOfDayCache";
-
-const WORD_LIST = [
-  "ephemeral", "serendipity", "mellifluous", "petrichor", "luminous", "quixotic",
-  "labyrinth", "nostalgia", "solitude", "wanderlust", "resilience", "eloquent",
-  "whimsical", "tranquil", "clandestine", "ethereal", "verdant", "opulent",
-  "effervescent", "cascade", "harbinger", "iridescent", "melancholy", "paradox",
-  "reverie", "solace", "tenacious", "vivid", "wistful", "zealous", "audacious",
-  "benevolent", "candid", "diligent", "enigma", "fortitude", "gregarious",
-  "halcyon", "impeccable", "jubilant", "kinetic", "lucid", "magnanimous",
-  "nebulous", "oblivion", "pragmatic", "quaint", "resonant", "sanguine",
-  "tumultuous", "ubiquitous", "vibrant", "wry", "xenial", "yearning", "zephyr",
-  "amiable", "bespoke", "cacophony", "demure", "euphoria", "flourish",
-  "gossamer", "hapless", "incandescent", "juxtapose", "keen", "languid",
-  "meander", "nimble", "ornate", "perceptive", "quiver", "radiant",
-  "stoic", "thrive", "unravel", "vintage", "whimsy", "yielding", "zenith",
-  "abundant", "brisk", "capricious", "dappled", "elusive", "frugal",
-  "genuine", "humble", "ignite", "jovial", "kindle", "lament",
-  "mirthful", "novel", "opaque", "placid",
-];
-
-async function fetchWordDefinition(word) {
-  const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`;
-  const response = await fetch(url);
-  if (!response.ok) return null;
-
-  const data = await response.json();
-  const entry = Array.isArray(data) ? data[0] : null;
-  if (!entry) return null;
-
-  const meaning = Array.isArray(entry.meanings)
-    ? entry.meanings.find((m) => Array.isArray(m.definitions) && m.definitions.length)
-    : null;
-  const definition = meaning?.definitions?.[0]?.definition;
-  if (!definition) return null;
-
-  return {
-    word: entry.word || word,
-    partOfSpeech: meaning.partOfSpeech || null,
-    definition,
-  };
-}
-
-async function getWordOfTheDay() {
-  const dateKey = todayDateKey();
-
-  const cached = (await browser.storage.local.get(WORD_OF_DAY_CACHE_KEY))[WORD_OF_DAY_CACHE_KEY];
-  if (cached && cached.dateKey === dateKey && cached.word) {
-    console.log("[word-of-day] serving cached word for", dateKey);
-    return cached.word;
-  }
-
-  const pool = [...WORD_LIST];
-  let word = null;
-  while (pool.length && !word) {
-    const index = Math.floor(Math.random() * pool.length);
-    const candidate = pool.splice(index, 1)[0];
-    try {
-      word = await fetchWordDefinition(candidate);
-    } catch (error) {
-      console.error("[word-of-day] lookup failed for", candidate, error);
-    }
-  }
-
-  if (!word) throw new Error("No word definition could be resolved");
-
-  console.log("[word-of-day] picked word:", word.word);
-  await browser.storage.local.set({ [WORD_OF_DAY_CACHE_KEY]: { dateKey, word } });
-  return word;
-}
-
 const QUOTE_OF_DAY_CACHE_KEY = "quoteOfDayCache";
 
 async function getQuoteOfTheDay() {
@@ -671,13 +600,6 @@ browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-ics-feed-events") {
     return getIcsFeedEvents().catch((error) => {
       console.error("[ics-feed] getIcsFeedEvents failed:", error);
-      throw error;
-    });
-  }
-
-  if (message?.type === "get-word-of-day") {
-    return getWordOfTheDay().catch((error) => {
-      console.error("[word-of-day] getWordOfTheDay failed:", error);
       throw error;
     });
   }

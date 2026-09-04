@@ -248,27 +248,6 @@ body {
   line-height: 1.5;
 }
 
-.word-of-day-word {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text);
-  text-transform: capitalize;
-}
-
-.word-of-day-pos {
-  font-size: 13px;
-  font-weight: 500;
-  font-style: italic;
-  color: var(--text-dim);
-}
-
-.word-of-day-definition {
-  font-size: 15px;
-  font-weight: 400;
-  line-height: 1.5;
-  color: var(--text);
-}
-
 .quote-of-day-text {
   font-size: 15px;
   font-weight: 400;

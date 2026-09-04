@@ -51,7 +51,6 @@ const clockEls = document.querySelectorAll("[data-clock]");
 const newsTrack = document.getElementById("news-track");
 const newsLogoBtn = document.getElementById("news-logo");
 const onThisDayEl = document.getElementById("on-this-day");
-const wordWidgetEl = document.getElementById("word-widget");
 const currencyWidgetEl = document.getElementById("currency-widget");
 const quoteWidgetEl = document.getElementById("quote-widget");
 
@@ -240,45 +239,6 @@ function renderSideWidgetMessage(container, label, message) {
   empty.className = "side-widget-empty";
   empty.textContent = message;
   container.append(labelEl, empty);
-}
-
-async function renderWordOfDay() {
-  let word;
-  try {
-    word = await sendMessageWithRetry({ type: "get-word-of-day" });
-  } catch (error) {
-    console.error("[word-of-day] sendMessage failed:", error);
-    word = null;
-  }
-
-  if (!word || !word.word || !word.definition) {
-    renderSideWidgetMessage(wordWidgetEl, "Word of the day", "Unable to load a word today.");
-    return;
-  }
-
-  wordWidgetEl.innerHTML = "";
-
-  const label = document.createElement("div");
-  label.className = "side-widget-label";
-  label.textContent = "Word of the day";
-
-  const wordEl = document.createElement("div");
-  wordEl.className = "word-of-day-word";
-  wordEl.textContent = word.word;
-
-  wordWidgetEl.append(label, wordEl);
-
-  if (word.partOfSpeech) {
-    const pos = document.createElement("div");
-    pos.className = "word-of-day-pos";
-    pos.textContent = word.partOfSpeech;
-    wordWidgetEl.appendChild(pos);
-  }
-
-  const definition = document.createElement("div");
-  definition.className = "word-of-day-definition";
-  definition.textContent = word.definition;
-  wordWidgetEl.appendChild(definition);
 }
 
 async function renderQuoteOfDay() {
@@ -749,7 +709,6 @@ setInterval(renderClocks, 30_000);
 loadSettings().then(() => renderCalendar());
 renderIcsFeedCalendar();
 renderOnThisDay();
-renderWordOfDay();
 renderCurrencyWidget();
 renderQuoteOfDay();
 loadNewsProgress().then(() => {
