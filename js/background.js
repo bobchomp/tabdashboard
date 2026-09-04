@@ -187,30 +187,46 @@ function todayDateKey() {
 }
 
 const QUOTE_OF_DAY_CACHE_KEY = "quoteOfDayCache";
+const QUOTE_OF_DAY_PICK_COUNT = 3;
+
+async function fetchRandomQuote() {
+  const response = await fetch("https://dummyjson.com/quotes/random");
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  if (!data || typeof data.quote !== "string" || typeof data.author !== "string") return null;
+
+  return { text: data.quote, author: data.author };
+}
 
 async function getQuoteOfTheDay() {
   const dateKey = todayDateKey();
 
   const cached = (await browser.storage.local.get(QUOTE_OF_DAY_CACHE_KEY))[QUOTE_OF_DAY_CACHE_KEY];
-  if (cached && cached.dateKey === dateKey && cached.quote) {
-    console.log("[quote-of-day] serving cached quote for", dateKey);
-    return cached.quote;
+  if (cached && cached.dateKey === dateKey && Array.isArray(cached.quotes)) {
+    console.log("[quote-of-day] serving cached quotes for", dateKey);
+    return cached.quotes;
   }
 
-  const response = await fetch("https://dummyjson.com/quotes/random");
-  if (!response.ok) {
-    throw new Error(`Quote request failed with status ${response.status}`);
+  const results = await Promise.allSettled(
+    Array.from({ length: QUOTE_OF_DAY_PICK_COUNT }, () => fetchRandomQuote())
+  );
+
+  const seen = new Set();
+  const quotes = [];
+  for (const result of results) {
+    if (result.status !== "fulfilled" || !result.value) continue;
+    const key = `${result.value.text}|${result.value.author}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    quotes.push(result.value);
   }
 
-  const data = await response.json();
-  if (!data || typeof data.quote !== "string" || typeof data.author !== "string") {
-    throw new Error("Unexpected quote response shape");
-  }
+  if (!quotes.length) throw new Error("No quotes could be resolved");
 
-  const quote = { text: data.quote, author: data.author };
-  console.log("[quote-of-day] picked quote by", quote.author);
-  await browser.storage.local.set({ [QUOTE_OF_DAY_CACHE_KEY]: { dateKey, quote } });
-  return quote;
+  console.log("[quote-of-day] picked quotes:", quotes.length);
+  await browser.storage.local.set({ [QUOTE_OF_DAY_CACHE_KEY]: { dateKey, quotes } });
+  return quotes;
 }
 
 const EXCHANGE_RATES_CACHE_KEY = "exchangeRatesCache";

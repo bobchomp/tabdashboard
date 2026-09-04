@@ -176,12 +176,14 @@ body {
   transition: opacity 0.22s ease;
 }
 
-.on-this-day.otd-fade-out {
+.on-this-day.rotator-fade-out,
+.side-widget.rotator-fade-out {
   opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .on-this-day {
+  .on-this-day,
+  .side-widget {
     transition: none;
   }
 }
@@ -234,6 +236,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  transition: opacity 0.22s ease;
 }
 
 .side-widget-label {

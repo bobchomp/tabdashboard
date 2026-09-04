@@ -176,60 +176,6 @@ function renderOnThisDayEvent(event) {
   }
 }
 
-const ON_THIS_DAY_ROTATE_MS = 12_000;
-
-let isRotatingOnThisDay = false;
-let onThisDayAutoTimer = null;
-
-async function advanceOnThisDay() {
-  if (onThisDayEvents.length < 2) return;
-  if (isRotatingOnThisDay) return;
-  isRotatingOnThisDay = true;
-
-  onThisDayEl.classList.add("otd-fade-out");
-  await sleep(220);
-
-  onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
-  renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
-
-  onThisDayEl.classList.remove("otd-fade-out");
-  isRotatingOnThisDay = false;
-}
-
-function startOnThisDayAutoRotate() {
-  if (onThisDayAutoTimer) clearInterval(onThisDayAutoTimer);
-  onThisDayAutoTimer = null;
-  if (onThisDayEvents.length < 2) return;
-  onThisDayAutoTimer = setInterval(advanceOnThisDay, ON_THIS_DAY_ROTATE_MS);
-}
-
-async function renderOnThisDay() {
-  let events;
-  try {
-    events = await sendMessageWithRetry({ type: "get-on-this-day" });
-  } catch (error) {
-    console.error("[on-this-day] sendMessage failed:", error);
-    events = [];
-  }
-
-  onThisDayEvents = Array.isArray(events) ? events.filter((event) => event && event.text) : [];
-
-  if (!onThisDayEvents.length) {
-    renderOnThisDayFallback();
-    return;
-  }
-
-  onThisDayIndex = 0;
-  renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
-  startOnThisDayAutoRotate();
-}
-
-onThisDayEl.addEventListener("click", (event) => {
-  if (event.target.closest("a")) return;
-  advanceOnThisDay();
-  startOnThisDayAutoRotate();
-});
-
 function renderSideWidgetMessage(container, label, message) {
   container.innerHTML = "";
   const labelEl = document.createElement("div");
@@ -241,20 +187,10 @@ function renderSideWidgetMessage(container, label, message) {
   container.append(labelEl, empty);
 }
 
-async function renderQuoteOfDay() {
-  let quote;
-  try {
-    quote = await sendMessageWithRetry({ type: "get-quote-of-day" });
-  } catch (error) {
-    console.error("[quote-of-day] sendMessage failed:", error);
-    quote = null;
-  }
+let quoteOfDayItems = [];
+let quoteOfDayIndex = 0;
 
-  if (!quote || !quote.text || !quote.author) {
-    renderSideWidgetMessage(quoteWidgetEl, "Quote of the day", "Unable to load a quote today.");
-    return;
-  }
-
+function renderQuoteOfDayItem(quote) {
   quoteWidgetEl.innerHTML = "";
 
   const label = document.createElement("div");
@@ -271,6 +207,97 @@ async function renderQuoteOfDay() {
 
   quoteWidgetEl.append(label, text, author);
 }
+
+// on-this-day and quote-of-the-day rotate together on one shared timer (and
+// one shared manual-advance), rather than each running its own independent
+// timer, so they never drift out of sync with each other.
+const ROTATE_MS = 12_000;
+
+let isRotating = false;
+let rotateAutoTimer = null;
+
+async function advanceRotators() {
+  if (isRotating) return;
+  const rotateOnThisDay = onThisDayEvents.length >= 2;
+  const rotateQuote = quoteOfDayItems.length >= 2;
+  if (!rotateOnThisDay && !rotateQuote) return;
+  isRotating = true;
+
+  if (rotateOnThisDay) onThisDayEl.classList.add("rotator-fade-out");
+  if (rotateQuote) quoteWidgetEl.classList.add("rotator-fade-out");
+  await sleep(220);
+
+  if (rotateOnThisDay) {
+    onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
+    renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+    onThisDayEl.classList.remove("rotator-fade-out");
+  }
+  if (rotateQuote) {
+    quoteOfDayIndex = (quoteOfDayIndex + 1) % quoteOfDayItems.length;
+    renderQuoteOfDayItem(quoteOfDayItems[quoteOfDayIndex]);
+    quoteWidgetEl.classList.remove("rotator-fade-out");
+  }
+
+  isRotating = false;
+}
+
+function startAutoRotate() {
+  if (rotateAutoTimer) clearInterval(rotateAutoTimer);
+  rotateAutoTimer = null;
+  if (onThisDayEvents.length < 2 && quoteOfDayItems.length < 2) return;
+  rotateAutoTimer = setInterval(advanceRotators, ROTATE_MS);
+}
+
+async function renderOnThisDay() {
+  let events;
+  try {
+    events = await sendMessageWithRetry({ type: "get-on-this-day" });
+  } catch (error) {
+    console.error("[on-this-day] sendMessage failed:", error);
+    events = [];
+  }
+
+  onThisDayEvents = Array.isArray(events) ? events.filter((event) => event && event.text) : [];
+
+  if (!onThisDayEvents.length) {
+    renderOnThisDayFallback();
+  } else {
+    onThisDayIndex = 0;
+    renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+  }
+  startAutoRotate();
+}
+
+async function renderQuoteOfDay() {
+  let quotes;
+  try {
+    quotes = await sendMessageWithRetry({ type: "get-quote-of-day" });
+  } catch (error) {
+    console.error("[quote-of-day] sendMessage failed:", error);
+    quotes = [];
+  }
+
+  quoteOfDayItems = Array.isArray(quotes) ? quotes.filter((quote) => quote && quote.text && quote.author) : [];
+
+  if (!quoteOfDayItems.length) {
+    renderSideWidgetMessage(quoteWidgetEl, "Quote of the day", "Unable to load a quote today.");
+  } else {
+    quoteOfDayIndex = 0;
+    renderQuoteOfDayItem(quoteOfDayItems[quoteOfDayIndex]);
+  }
+  startAutoRotate();
+}
+
+onThisDayEl.addEventListener("click", (event) => {
+  if (event.target.closest("a")) return;
+  advanceRotators();
+  startAutoRotate();
+});
+
+quoteWidgetEl.addEventListener("click", () => {
+  advanceRotators();
+  startAutoRotate();
+});
 
 const CURRENCY_SYMBOLS = { USD: "$", EUR: "€", JPY: "¥", AUD: "A$" };
 
