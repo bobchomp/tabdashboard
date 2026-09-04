@@ -208,13 +208,59 @@ function renderQuoteOfDayItem(quote) {
   quoteWidgetEl.append(label, text, author);
 }
 
-// on-this-day and quote-of-the-day rotate together on one shared timer (and
-// one shared manual-advance), rather than each running its own independent
-// timer, so they never drift out of sync with each other.
-const ROTATE_MS = 12_000;
+const CURRENCY_SYMBOLS = { USD: "$", EUR: "€", JPY: "¥", AUD: "A$" };
+
+let currencyRates = [];
+let currencyIndex = 0;
+
+function renderCurrencyRate(rate) {
+  currencyWidgetEl.innerHTML = "";
+
+  const label = document.createElement("div");
+  label.className = "side-widget-label";
+  label.textContent = "GBP exchange rates";
+
+  const row = document.createElement("div");
+  row.className = "currency-rate-row";
+
+  const pair = document.createElement("div");
+  pair.className = "currency-rate-pair";
+  pair.textContent = `GBP → ${rate.code}`;
+
+  const value = document.createElement("div");
+  value.className = "currency-rate-value";
+  const symbol = CURRENCY_SYMBOLS[rate.code] || "";
+  value.textContent = `${symbol}${rate.rate.toFixed(2)}`;
+
+  row.append(pair, value);
+  currencyWidgetEl.append(label, row);
+}
+
+function advanceOnThisDayIndex() {
+  onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
+  renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+}
+
+function advanceQuoteIndex() {
+  quoteOfDayIndex = (quoteOfDayIndex + 1) % quoteOfDayItems.length;
+  renderQuoteOfDayItem(quoteOfDayItems[quoteOfDayIndex]);
+}
+
+function advanceCurrencyIndex() {
+  currencyIndex = (currencyIndex + 1) % currencyRates.length;
+  renderCurrencyRate(currencyRates[currencyIndex]);
+}
+
+// The exchange-rate widget cycles every 6s; on-this-day and quote-of-the-day
+// cycle every 12s (every other exchange-rate tick), so all three land on the
+// same change together every 12s, with the exchange rate also changing once
+// on its own halfway in between. One shared timer with a tick counter drives
+// all of it, rather than separate per-widget timers, so they can't drift.
+const TICK_MS = 6_000;
 
 let isRotating = false;
 let rotateAutoTimer = null;
+let tickCount = 0;
 
 // A card's height is auto (driven by its content), and CSS can't transition
 // to/from "auto" directly. Lock the card to its current pixel height, swap
@@ -249,77 +295,47 @@ function animateHeightChange(el, updateContent) {
   });
 }
 
-async function advanceRotators() {
-  if (isRotating) return;
-  const rotateOnThisDay = onThisDayEvents.length >= 2;
-  const rotateQuote = quoteOfDayItems.length >= 2;
-  if (!rotateOnThisDay && !rotateQuote) return;
+// Fades out, advances, height-animates, and fades back in every entry in
+// the group at the same time — used for both a single manually-clicked
+// widget and the multi-widget auto-tick, so simultaneous changes are always
+// driven by one fade/sleep/advance pass rather than several racing ones.
+async function fadeAndAdvance(entries) {
+  if (!entries.length || isRotating) return;
   isRotating = true;
 
-  if (rotateOnThisDay) onThisDayEl.classList.add("rotator-fade-out");
-  if (rotateQuote) quoteWidgetEl.classList.add("rotator-fade-out");
+  for (const { el } of entries) el.classList.add("rotator-fade-out");
   await sleep(220);
 
-  if (rotateOnThisDay) {
-    animateHeightChange(onThisDayEl, () => {
-      onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
-      renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
-    });
-    onThisDayEl.classList.remove("rotator-fade-out");
-  }
-  if (rotateQuote) {
-    animateHeightChange(quoteWidgetEl, () => {
-      quoteOfDayIndex = (quoteOfDayIndex + 1) % quoteOfDayItems.length;
-      renderQuoteOfDayItem(quoteOfDayItems[quoteOfDayIndex]);
-    });
-    quoteWidgetEl.classList.remove("rotator-fade-out");
+  for (const { el, advance } of entries) {
+    animateHeightChange(el, advance);
+    el.classList.remove("rotator-fade-out");
   }
 
   isRotating = false;
+}
+
+async function handleAutoTick() {
+  tickCount++;
+  const entries = [];
+
+  if (currencyRates.length >= 2) {
+    entries.push({ el: currencyWidgetEl, advance: advanceCurrencyIndex });
+  }
+  if (tickCount % 2 === 0) {
+    if (onThisDayEvents.length >= 2) entries.push({ el: onThisDayEl, advance: advanceOnThisDayIndex });
+    if (quoteOfDayItems.length >= 2) entries.push({ el: quoteWidgetEl, advance: advanceQuoteIndex });
+  }
+
+  await fadeAndAdvance(entries);
 }
 
 function startAutoRotate() {
   if (rotateAutoTimer) clearInterval(rotateAutoTimer);
   rotateAutoTimer = null;
-  if (onThisDayEvents.length < 2 && quoteOfDayItems.length < 2) return;
-  rotateAutoTimer = setInterval(advanceRotators, ROTATE_MS);
-}
-
-// A manual click advances only the widget that was clicked, not both — but
-// still resets the shared timer, so the next automatic change (which always
-// moves both together) is 12s out from that click.
-async function advanceOnThisDayOnly() {
-  if (isRotating) return;
-  if (onThisDayEvents.length < 2) return;
-  isRotating = true;
-
-  onThisDayEl.classList.add("rotator-fade-out");
-  await sleep(220);
-
-  animateHeightChange(onThisDayEl, () => {
-    onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
-    renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
-  });
-  onThisDayEl.classList.remove("rotator-fade-out");
-
-  isRotating = false;
-}
-
-async function advanceQuoteOnly() {
-  if (isRotating) return;
-  if (quoteOfDayItems.length < 2) return;
-  isRotating = true;
-
-  quoteWidgetEl.classList.add("rotator-fade-out");
-  await sleep(220);
-
-  animateHeightChange(quoteWidgetEl, () => {
-    quoteOfDayIndex = (quoteOfDayIndex + 1) % quoteOfDayItems.length;
-    renderQuoteOfDayItem(quoteOfDayItems[quoteOfDayIndex]);
-  });
-  quoteWidgetEl.classList.remove("rotator-fade-out");
-
-  isRotating = false;
+  tickCount = 0;
+  const canRotateAny = onThisDayEvents.length >= 2 || quoteOfDayItems.length >= 2 || currencyRates.length >= 2;
+  if (!canRotateAny) return;
+  rotateAutoTimer = setInterval(handleAutoTick, TICK_MS);
 }
 
 async function renderOnThisDay() {
@@ -362,19 +378,6 @@ async function renderQuoteOfDay() {
   startAutoRotate();
 }
 
-onThisDayEl.addEventListener("click", (event) => {
-  if (event.target.closest("a")) return;
-  advanceOnThisDayOnly();
-  startAutoRotate();
-});
-
-quoteWidgetEl.addEventListener("click", () => {
-  advanceQuoteOnly();
-  startAutoRotate();
-});
-
-const CURRENCY_SYMBOLS = { USD: "$", EUR: "€", JPY: "¥", AUD: "A$" };
-
 async function renderCurrencyWidget() {
   let rates;
   try {
@@ -384,39 +387,31 @@ async function renderCurrencyWidget() {
     rates = null;
   }
 
-  if (!Array.isArray(rates) || !rates.length) {
+  currencyRates = Array.isArray(rates) ? rates.filter((rate) => rate && rate.code && typeof rate.rate === "number") : [];
+
+  if (!currencyRates.length) {
     renderSideWidgetMessage(currencyWidgetEl, "Exchange rates", "Unable to load exchange rates today.");
-    return;
+  } else {
+    currencyIndex = 0;
+    renderCurrencyRate(currencyRates[currencyIndex]);
   }
-
-  currencyWidgetEl.innerHTML = "";
-
-  const label = document.createElement("div");
-  label.className = "side-widget-label";
-  label.textContent = "GBP exchange rates";
-
-  const list = document.createElement("div");
-  list.className = "currency-rates";
-
-  for (const { code, rate } of rates) {
-    const row = document.createElement("div");
-    row.className = "currency-rate-row";
-
-    const pair = document.createElement("div");
-    pair.className = "currency-rate-pair";
-    pair.textContent = `GBP → ${code}`;
-
-    const value = document.createElement("div");
-    value.className = "currency-rate-value";
-    const symbol = CURRENCY_SYMBOLS[code] || "";
-    value.textContent = `${symbol}${rate.toFixed(2)}`;
-
-    row.append(pair, value);
-    list.appendChild(row);
-  }
-
-  currencyWidgetEl.append(label, list);
+  startAutoRotate();
 }
+
+onThisDayEl.addEventListener("click", (event) => {
+  if (event.target.closest("a")) return;
+  if (onThisDayEvents.length >= 2) {
+    fadeAndAdvance([{ el: onThisDayEl, advance: advanceOnThisDayIndex }]);
+  }
+  startAutoRotate();
+});
+
+quoteWidgetEl.addEventListener("click", () => {
+  if (quoteOfDayItems.length >= 2) {
+    fadeAndAdvance([{ el: quoteWidgetEl, advance: advanceQuoteIndex }]);
+  }
+  startAutoRotate();
+});
 
 function formatEventDayLabel(date) {
   return date.toLocaleDateString("en-US", { weekday: "long" });

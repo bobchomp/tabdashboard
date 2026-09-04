@@ -266,12 +266,6 @@ body {
   text-align: right;
 }
 
-.currency-rates {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .currency-rate-row {
   display: flex;
   align-items: baseline;
