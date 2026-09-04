@@ -146,12 +146,10 @@ function renderClocks() {
 
     const dateEl = el.querySelector(".clock-date");
     if (dateEl) {
-      dateEl.textContent = now.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        timeZone: timeZone === "local" ? undefined : timeZone,
-      });
+      const dateTimeZone = timeZone === "local" ? undefined : timeZone;
+      const weekday = now.toLocaleDateString("en-GB", { weekday: "long", timeZone: dateTimeZone });
+      const dayMonth = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: dateTimeZone });
+      dateEl.textContent = `${weekday}, ${dayMonth}`;
     }
   }
 }
