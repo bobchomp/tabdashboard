@@ -116,6 +116,8 @@ const settingsDialog = document.getElementById("settings-dialog");
 const settingsForm = document.getElementById("settings-form");
 const settingsCancelBtn = document.getElementById("settings-cancel");
 const settingsCloseBtn = document.getElementById("settings-close");
+const refreshOnThisDayBtn = document.getElementById("refresh-on-this-day");
+const refreshQuoteOfDayBtn = document.getElementById("refresh-quote-of-day");
 const searchEngineSelect = document.getElementById("search-engine-select");
 const appleIdInput = document.getElementById("apple-id-input");
 const applePasswordInput = document.getElementById("apple-password-input");
@@ -409,10 +411,10 @@ function startAutoRotate() {
   rotateAutoTimer = setInterval(handleAutoTick, TICK_MS);
 }
 
-async function renderOnThisDay() {
+async function renderOnThisDay(force = false) {
   let events;
   try {
-    events = await sendMessageWithRetry({ type: "get-on-this-day" });
+    events = await sendMessageWithRetry({ type: "get-on-this-day", force });
   } catch (error) {
     console.error("[on-this-day] sendMessage failed:", error);
     events = [];
@@ -429,10 +431,10 @@ async function renderOnThisDay() {
   startAutoRotate();
 }
 
-async function renderQuoteOfDay() {
+async function renderQuoteOfDay(force = false) {
   let quotes;
   try {
-    quotes = await sendMessageWithRetry({ type: "get-quote-of-day" });
+    quotes = await sendMessageWithRetry({ type: "get-quote-of-day", force });
   } catch (error) {
     console.error("[quote-of-day] sendMessage failed:", error);
     quotes = [];
@@ -1103,6 +1105,22 @@ settingsForm.addEventListener("submit", async (event) => {
 
 settingsCancelBtn.addEventListener("click", () => settingsDialog.close());
 settingsCloseBtn.addEventListener("click", () => settingsDialog.close());
+
+async function handleRefreshClick(button, refresh) {
+  if (button.disabled) return;
+  button.disabled = true;
+  const originalHTML = button.innerHTML;
+  button.textContent = "Refreshing…";
+  try {
+    await refresh(true);
+  } finally {
+    button.disabled = false;
+    button.innerHTML = originalHTML;
+  }
+}
+
+refreshOnThisDayBtn.addEventListener("click", () => handleRefreshClick(refreshOnThisDayBtn, renderOnThisDay));
+refreshQuoteOfDayBtn.addEventListener("click", () => handleRefreshClick(refreshQuoteOfDayBtn, renderQuoteOfDay));
 
 function runSearch(rawQuery) {
   const query = rawQuery.trim();

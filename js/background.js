@@ -132,11 +132,11 @@ function todayMonthDay() {
 
 const ON_THIS_DAY_PICK_COUNT = 3;
 
-async function getOnThisDay() {
+async function getOnThisDay(force = false) {
   const dateKey = todayMonthDay();
 
   const cached = (await browser.storage.local.get(ON_THIS_DAY_CACHE_KEY))[ON_THIS_DAY_CACHE_KEY];
-  if (cached && cached.dateKey === dateKey && Array.isArray(cached.events)) {
+  if (!force && cached && cached.dateKey === dateKey && Array.isArray(cached.events)) {
     console.log("[on-this-day] serving cached events for", dateKey);
     return cached.events;
   }
@@ -199,11 +199,11 @@ async function fetchRandomQuote() {
   return { text: data.quote, author: data.author };
 }
 
-async function getQuoteOfTheDay() {
+async function getQuoteOfTheDay(force = false) {
   const dateKey = todayDateKey();
 
   const cached = (await browser.storage.local.get(QUOTE_OF_DAY_CACHE_KEY))[QUOTE_OF_DAY_CACHE_KEY];
-  if (cached && cached.dateKey === dateKey && Array.isArray(cached.quotes)) {
+  if (!force && cached && cached.dateKey === dateKey && Array.isArray(cached.quotes)) {
     console.log("[quote-of-day] serving cached quotes for", dateKey);
     return cached.quotes;
   }
@@ -963,7 +963,7 @@ browser.runtime.onMessage.addListener((message) => {
   }
 
   if (message?.type === "get-on-this-day") {
-    return getOnThisDay().catch((error) => {
+    return getOnThisDay(!!message.force).catch((error) => {
       console.error("[on-this-day] getOnThisDay failed:", error);
       throw error;
     });
@@ -984,7 +984,7 @@ browser.runtime.onMessage.addListener((message) => {
   }
 
   if (message?.type === "get-quote-of-day") {
-    return getQuoteOfTheDay().catch((error) => {
+    return getQuoteOfTheDay(!!message.force).catch((error) => {
       console.error("[quote-of-day] getQuoteOfTheDay failed:", error);
       throw error;
     });
