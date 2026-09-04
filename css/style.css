@@ -132,9 +132,9 @@ body {
 }
 
 .clock-date {
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 500;
-  color: var(--text-dim);
+  color: #000;
 }
 
 .settings-btn {
