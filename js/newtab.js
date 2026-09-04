@@ -285,6 +285,43 @@ function startAutoRotate() {
   rotateAutoTimer = setInterval(advanceRotators, ROTATE_MS);
 }
 
+// A manual click advances only the widget that was clicked, not both — but
+// still resets the shared timer, so the next automatic change (which always
+// moves both together) is 12s out from that click.
+async function advanceOnThisDayOnly() {
+  if (isRotating) return;
+  if (onThisDayEvents.length < 2) return;
+  isRotating = true;
+
+  onThisDayEl.classList.add("rotator-fade-out");
+  await sleep(220);
+
+  animateHeightChange(onThisDayEl, () => {
+    onThisDayIndex = (onThisDayIndex + 1) % onThisDayEvents.length;
+    renderOnThisDayEvent(onThisDayEvents[onThisDayIndex]);
+  });
+  onThisDayEl.classList.remove("rotator-fade-out");
+
+  isRotating = false;
+}
+
+async function advanceQuoteOnly() {
+  if (isRotating) return;
+  if (quoteOfDayItems.length < 2) return;
+  isRotating = true;
+
+  quoteWidgetEl.classList.add("rotator-fade-out");
+  await sleep(220);
+
+  animateHeightChange(quoteWidgetEl, () => {
+    quoteOfDayIndex = (quoteOfDayIndex + 1) % quoteOfDayItems.length;
+    renderQuoteOfDayItem(quoteOfDayItems[quoteOfDayIndex]);
+  });
+  quoteWidgetEl.classList.remove("rotator-fade-out");
+
+  isRotating = false;
+}
+
 async function renderOnThisDay() {
   let events;
   try {
@@ -327,12 +364,12 @@ async function renderQuoteOfDay() {
 
 onThisDayEl.addEventListener("click", (event) => {
   if (event.target.closest("a")) return;
-  advanceRotators();
+  advanceOnThisDayOnly();
   startAutoRotate();
 });
 
 quoteWidgetEl.addEventListener("click", () => {
-  advanceRotators();
+  advanceQuoteOnly();
   startAutoRotate();
 });
 
