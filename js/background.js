@@ -412,7 +412,7 @@ const CALENDAR_EVENTS_CACHE_MS = 15 * 60 * 1000;
 // Bump this whenever what gets merged into the cached event list changes
 // (e.g. adding/removing a feed) so an in-flight cache from before the
 // change doesn't get served as if it already reflects it.
-const CALENDAR_CACHE_VERSION = 3;
+const CALENDAR_CACHE_VERSION = 4;
 const CALENDAR_LOOKAHEAD_DAYS = 7;
 const CALENDAR_MAX_EVENTS = 60;
 const CALDAV_NS = "DAV:";
@@ -603,7 +603,7 @@ function parseIcsDate(value, isAllDay) {
 
 function parseVEventBlock(block) {
   const lines = block.split(/\r\n|\n|\r/).filter((line) => line && !/^(BEGIN|END):/i.test(line));
-  const event = {};
+  const event = { exdates: [] };
   for (const line of lines) {
     const colonIndex = line.indexOf(":");
     if (colonIndex === -1) continue;
@@ -619,23 +619,186 @@ function parseVEventBlock(block) {
     } else if (key === "DTEND") {
       event.end = parseIcsDate(value, isAllDay);
     } else if (key === "UID") event.uid = value;
+    else if (key === "RRULE") event.rrule = value;
+    else if (key === "RECURRENCE-ID") event.recurrenceId = parseIcsDate(value, isAllDay);
+    else if (key === "STATUS") event.status = value;
+    else if (key === "EXDATE") {
+      event.exdates.push(
+        ...value
+          .split(",")
+          .map((v) => parseIcsDate(v.trim(), isAllDay))
+          .filter(Boolean)
+      );
+    }
   }
   return event;
 }
 
-function extractEvents(icsText) {
+const RRULE_WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+function parseRRuleParts(rrule) {
+  const parts = {};
+  for (const pair of rrule.split(";")) {
+    const [key, value] = pair.split("=");
+    if (key && value) parts[key.trim().toUpperCase()] = value.trim();
+  }
+  return parts;
+}
+
+// Expands a recurring VEVENT's RRULE into concrete occurrence start times
+// within [rangeStart, rangeEnd]. CalDAV/ICS calendar-data for a recurring
+// event carries the master's *original* DTSTART (which can be anywhere in
+// the past), not the upcoming occurrence — without this, a weekly event
+// created a year ago would appear to be happening on that original date.
+// Covers the common real-world subset: FREQ DAILY/WEEKLY/MONTHLY/YEARLY,
+// INTERVAL, COUNT, UNTIL, and BYDAY (for WEEKLY). Anything else falls back
+// to the single original occurrence.
+function expandRRuleOccurrences(masterStart, rruleValue, rangeStart, rangeEnd) {
+  const parts = parseRRuleParts(rruleValue);
+  const freq = parts.FREQ;
+  const interval = Math.max(1, parseInt(parts.INTERVAL, 10) || 1);
+  const count = parts.COUNT ? parseInt(parts.COUNT, 10) : null;
+  const until = parts.UNTIL ? parseIcsDate(parts.UNTIL, !parts.UNTIL.includes("T")) : null;
+  const hardEnd = until && until < rangeEnd ? until : rangeEnd;
+  const MAX_OCCURRENCES = 3000;
+  const occurrences = [];
+
+  if (freq === "WEEKLY") {
+    const byDay = parts.BYDAY
+      ? parts.BYDAY.split(",").map((d) => d.trim().toUpperCase().slice(-2))
+      : [RRULE_WEEKDAY_CODES[masterStart.getDay()]];
+
+    const seriesWeekStart = new Date(masterStart);
+    seriesWeekStart.setHours(0, 0, 0, 0);
+    seriesWeekStart.setDate(seriesWeekStart.getDate() - seriesWeekStart.getDay());
+
+    let generated = 0;
+    for (
+      let weekStart = seriesWeekStart;
+      weekStart <= hardEnd && generated < MAX_OCCURRENCES;
+      weekStart = new Date(weekStart.getTime() + interval * 7 * 24 * 60 * 60 * 1000)
+    ) {
+      for (const code of byDay) {
+        const offset = RRULE_WEEKDAY_CODES.indexOf(code);
+        if (offset === -1) continue;
+        const occ = new Date(weekStart.getTime() + offset * 24 * 60 * 60 * 1000);
+        occ.setHours(masterStart.getHours(), masterStart.getMinutes(), masterStart.getSeconds(), 0);
+        if (occ < masterStart || occ > hardEnd) continue;
+        generated++;
+        if (count && generated > count) break;
+        if (occ >= rangeStart && occ <= rangeEnd) occurrences.push(occ);
+      }
+      if (count && generated >= count) break;
+    }
+    return occurrences;
+  }
+
+  const stepFns = {
+    DAILY: (date) => new Date(date.getTime() + interval * 24 * 60 * 60 * 1000),
+    MONTHLY: (date) => {
+      const next = new Date(date);
+      next.setMonth(next.getMonth() + interval);
+      return next;
+    },
+    YEARLY: (date) => {
+      const next = new Date(date);
+      next.setFullYear(next.getFullYear() + interval);
+      return next;
+    },
+  };
+
+  const stepFn = stepFns[freq];
+  if (!stepFn) {
+    if (masterStart >= rangeStart && masterStart <= rangeEnd) occurrences.push(new Date(masterStart));
+    return occurrences;
+  }
+
+  let cursor = new Date(masterStart);
+  let generated = 0;
+  while (cursor <= hardEnd && generated < MAX_OCCURRENCES) {
+    generated++;
+    if (count && generated > count) break;
+    if (cursor >= rangeStart && cursor <= rangeEnd) occurrences.push(new Date(cursor));
+    cursor = stepFn(cursor);
+  }
+  return occurrences;
+}
+
+// rangeStart/rangeEnd are optional for backward compatibility, but without
+// them recurring events fall back to their literal (often historical)
+// DTSTART — always pass a range when the result will be shown as "upcoming".
+function extractEvents(icsText, rangeStart, rangeEnd) {
   const unfolded = unfoldIcs(icsText);
   const blocks = unfolded.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) || [];
-  return blocks
+  const rawEvents = blocks
     .map(parseVEventBlock)
     .filter((event) => event.summary && event.start instanceof Date && !Number.isNaN(event.start.getTime()));
+
+  if (!rangeStart || !rangeEnd) return rawEvents;
+
+  const overridesByUid = new Map();
+  const masters = [];
+  const plainEvents = [];
+
+  for (const event of rawEvents) {
+    if (event.recurrenceId) {
+      if (!overridesByUid.has(event.uid)) overridesByUid.set(event.uid, new Map());
+      overridesByUid.get(event.uid).set(event.recurrenceId.getTime(), event);
+    } else if (event.rrule) {
+      masters.push(event);
+    } else {
+      plainEvents.push(event);
+    }
+  }
+
+  const isCancelled = (event) => (event.status || "").toUpperCase() === "CANCELLED";
+
+  const results = plainEvents.filter(
+    (event) => !isCancelled(event) && event.start >= rangeStart && event.start <= rangeEnd
+  );
+
+  for (const master of masters) {
+    const exdateTimes = new Set(master.exdates.map((d) => d.getTime()));
+    const overrides = overridesByUid.get(master.uid) || new Map();
+    const durationMs = master.end instanceof Date ? master.end.getTime() - master.start.getTime() : null;
+
+    for (const occStart of expandRRuleOccurrences(master.start, master.rrule, rangeStart, rangeEnd)) {
+      if (exdateTimes.has(occStart.getTime())) continue;
+
+      const override = overrides.get(occStart.getTime());
+      if (override) {
+        overrides.delete(occStart.getTime());
+        if (!isCancelled(override)) results.push(override);
+        continue;
+      }
+
+      results.push({
+        summary: master.summary,
+        start: occStart,
+        end: durationMs !== null ? new Date(occStart.getTime() + durationMs) : null,
+        allDay: master.allDay,
+        uid: master.uid,
+      });
+    }
+
+    // A leftover override's RECURRENCE-ID didn't line up with a generated
+    // occurrence (e.g. outside this expansion's own window) — it still has
+    // its own valid start time, so include it directly if it's in range.
+    for (const leftover of overrides.values()) {
+      if (!isCancelled(leftover) && leftover.start >= rangeStart && leftover.start <= rangeEnd) {
+        results.push(leftover);
+      }
+    }
+  }
+
+  return results;
 }
 
 async function fetchAllCalendarEvents(credentials, calendars, rangeStart, rangeEnd) {
   const allEvents = [];
   for (const calendarUrl of calendars) {
     const icsText = await fetchCalendarEvents(credentials, calendarUrl, rangeStart, rangeEnd);
-    allEvents.push(...extractEvents(icsText));
+    allEvents.push(...extractEvents(icsText, rangeStart, rangeEnd));
   }
   return allEvents;
 }
@@ -649,21 +812,23 @@ const EXTRA_CALENDAR_FEED_URLS = [
   "https://ics.fixtur.es/v2/brentford-fc.ics?5b5429364fa6cb0c",
 ];
 
-async function fetchExtraCalendarFeed(url) {
+async function fetchExtraCalendarFeed(url, rangeStart, rangeEnd) {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Extra calendar feed request failed with status ${response.status} for ${url}`);
   }
   const text = await response.text();
-  return extractEvents(text);
+  return extractEvents(text, rangeStart, rangeEnd);
 }
 
-async function getExtraCalendarFeedEvents() {
-  const results = await Promise.allSettled(EXTRA_CALENDAR_FEED_URLS.map(fetchExtraCalendarFeed));
+async function getExtraCalendarFeedEvents(rangeStart, rangeEnd) {
+  const results = await Promise.allSettled(
+    EXTRA_CALENDAR_FEED_URLS.map((url) => fetchExtraCalendarFeed(url, rangeStart, rangeEnd))
+  );
   const events = [];
   results.forEach((result, index) => {
     if (result.status === "fulfilled") {
-      console.log("[calendar] extra feed parsed:", EXTRA_CALENDAR_FEED_URLS[index], result.value.length, "events");
+      console.log("[calendar] extra feed events in range:", EXTRA_CALENDAR_FEED_URLS[index], result.value.length);
       events.push(...result.value);
     } else {
       console.error("[calendar] extra feed failed:", EXTRA_CALENDAR_FEED_URLS[index], result.reason);
@@ -704,14 +869,11 @@ async function getUpcomingCalendarEvents() {
     allEvents = await fetchAllCalendarEvents(credentials, calendars, rangeStart, rangeEnd);
   }
 
-  const rawExtraEvents = await getExtraCalendarFeedEvents();
-  const extraEvents = rawExtraEvents.filter((event) => event.start >= rangeStart && event.start <= rangeEnd);
+  const extraEvents = await getExtraCalendarFeedEvents(rangeStart, rangeEnd);
   console.log(
     "[calendar] extra feed events in range:",
     extraEvents.length,
-    "of",
-    rawExtraEvents.length,
-    "parsed; personal calendar events:",
+    "personal calendar events:",
     allEvents.length
   );
   allEvents.push(...extraEvents);
@@ -743,10 +905,15 @@ const ICS_FEED_CACHE_KEY = "icsFeedCache";
 const ICS_FEED_CACHE_MS = 15 * 60 * 1000;
 const ICS_FEED_LOOKAHEAD_DAYS = 7;
 const ICS_FEED_MAX_EVENTS = 8;
+const ICS_FEED_CACHE_VERSION = 2;
 
 async function getIcsFeedEvents() {
   const cached = (await browser.storage.local.get(ICS_FEED_CACHE_KEY))[ICS_FEED_CACHE_KEY];
-  if (cached && Date.now() - cached.fetchedAt < ICS_FEED_CACHE_MS) {
+  if (
+    cached &&
+    cached.version === ICS_FEED_CACHE_VERSION &&
+    Date.now() - cached.fetchedAt < ICS_FEED_CACHE_MS
+  ) {
     console.log("[ics-feed] serving cached events:", cached.events.length);
     return cached.events;
   }
@@ -762,8 +929,7 @@ async function getIcsFeedEvents() {
   const rangeStart = new Date();
   const rangeEnd = new Date(rangeStart.getTime() + ICS_FEED_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
 
-  const events = extractEvents(text)
-    .filter((event) => event.start >= rangeStart && event.start <= rangeEnd)
+  const events = extractEvents(text, rangeStart, rangeEnd)
     .sort((a, b) => a.start - b.start)
     .slice(0, ICS_FEED_MAX_EVENTS)
     .map((event) => ({
@@ -774,7 +940,9 @@ async function getIcsFeedEvents() {
     }));
 
   console.log("[ics-feed] events after filtering:", events.length);
-  await browser.storage.local.set({ [ICS_FEED_CACHE_KEY]: { fetchedAt: Date.now(), events } });
+  await browser.storage.local.set({
+    [ICS_FEED_CACHE_KEY]: { version: ICS_FEED_CACHE_VERSION, fetchedAt: Date.now(), events },
+  });
   return events;
 }
 
