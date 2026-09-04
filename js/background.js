@@ -412,9 +412,9 @@ const CALENDAR_EVENTS_CACHE_MS = 15 * 60 * 1000;
 // Bump this whenever what gets merged into the cached event list changes
 // (e.g. adding/removing a feed) so an in-flight cache from before the
 // change doesn't get served as if it already reflects it.
-const CALENDAR_CACHE_VERSION = 2;
+const CALENDAR_CACHE_VERSION = 3;
 const CALENDAR_LOOKAHEAD_DAYS = 7;
-const CALENDAR_MAX_EVENTS = 20;
+const CALENDAR_MAX_EVENTS = 60;
 const CALDAV_NS = "DAV:";
 const CALDAV_CAL_NS = "urn:ietf:params:xml:ns:caldav";
 
