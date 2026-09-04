@@ -270,17 +270,18 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 10px;
 }
 
 .currency-rate-pair {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 22px;
+  font-weight: 600;
   color: var(--text);
 }
 
 .currency-rate-value {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 26px;
+  font-weight: 700;
   color: var(--text);
 }
 
