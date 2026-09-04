@@ -28,7 +28,8 @@
     "https://admin.dollopsicecream.co.uk/*",
     "https://dummyjson.com/*",
     "https://api.frankfurter.app/*",
-    "https://api.sunrise-sunset.org/*"
+    "https://api.sunrise-sunset.org/*",
+    "https://geocoding-api.open-meteo.com/*"
   ],
   "browser_specific_settings": {
     "gecko": {

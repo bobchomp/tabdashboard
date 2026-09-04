@@ -1,5 +1,4 @@
 const SETTINGS_KEY = "settings";
-const USER_NAME = "Ross";
 
 const SEARCH_ENGINES = {
   duckduckgo: { label: "DuckDuckGo", url: "https://duckduckgo.com/?q=" },
@@ -7,7 +6,14 @@ const SEARCH_ENGINES = {
   bing: { label: "Bing", url: "https://www.bing.com/search?q=" },
   ecosia: { label: "Ecosia", url: "https://www.ecosia.org/search?q=" },
 };
-const DEFAULT_SETTINGS = { searchEngine: "duckduckgo", appleId: "", appSpecificPassword: "" };
+const DEFAULT_LOCATION = { name: "Inverness", lat: 57.4778, lng: -4.2247, timezone: "Europe/London" };
+const DEFAULT_SETTINGS = {
+  searchEngine: "duckduckgo",
+  appleId: "",
+  appSpecificPassword: "",
+  userName: "Ross",
+  location: DEFAULT_LOCATION,
+};
 
 // Firefox's non-persistent background script can still be waking up when
 // several sendMessage calls fire near-simultaneously on page load, which
@@ -48,6 +54,8 @@ const NEWS_LOGOS = {
 };
 
 const clockEls = document.querySelectorAll("[data-clock]");
+const clockMainEl = document.querySelector(".clock-main");
+const clockMainCityEl = clockMainEl.querySelector(".clock-city");
 const newsTrack = document.getElementById("news-track");
 const newsLogoBtn = document.getElementById("news-logo");
 const onThisDayEl = document.getElementById("on-this-day");
@@ -89,6 +97,9 @@ const settingsCloseBtn = document.getElementById("settings-close");
 const searchEngineSelect = document.getElementById("search-engine-select");
 const appleIdInput = document.getElementById("apple-id-input");
 const applePasswordInput = document.getElementById("apple-password-input");
+const nameInput = document.getElementById("name-input");
+const locationInput = document.getElementById("location-input");
+const locationErrorEl = document.getElementById("location-error");
 const calendarWidget = document.getElementById("calendar-widget");
 const icsFeedWidget = document.getElementById("ics-feed-widget");
 
@@ -107,12 +118,19 @@ async function saveSettings() {
 function applySettings() {
   const engine = SEARCH_ENGINES[settings.searchEngine] || SEARCH_ENGINES[DEFAULT_SETTINGS.searchEngine];
   searchInput.placeholder = `Search ${engine.label} or enter address`;
+
+  const location = settings.location || DEFAULT_SETTINGS.location;
+  clockMainCityEl.textContent = location.name;
+  clockMainEl.dataset.clock = location.timezone || "local";
+
+  renderGreeting();
+  renderClocks();
 }
 
 function renderGreeting() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  greetingEl.textContent = `${greeting}, ${USER_NAME}`;
+  greetingEl.textContent = `${greeting}, ${settings.userName || DEFAULT_SETTINGS.userName}`;
 }
 
 function renderClocks() {
@@ -429,9 +447,10 @@ async function renderSunriseWidget() {
 
   sunriseWidgetEl.innerHTML = "";
 
+  const locationName = (settings.location || DEFAULT_SETTINGS.location).name;
   const label = document.createElement("div");
   label.className = "side-widget-label";
-  label.textContent = "Sunrise & sunset (Inverness)";
+  label.textContent = `Sunrise & sunset (${locationName})`;
 
   const rows = document.createElement("div");
   rows.className = "sunrise-rows";
@@ -675,23 +694,59 @@ settingsBtn.addEventListener("click", () => {
   searchEngineSelect.value = settings.searchEngine;
   appleIdInput.value = settings.appleId;
   applePasswordInput.value = settings.appSpecificPassword;
+  nameInput.value = settings.userName;
+  locationInput.value = settings.location.name;
+  locationErrorEl.hidden = true;
   settingsDialog.showModal();
 });
 
 settingsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+
   const credentialsChanged =
     appleIdInput.value.trim() !== settings.appleId ||
     applePasswordInput.value.trim() !== settings.appSpecificPassword;
 
+  const newLocationName = locationInput.value.trim();
+  let resolvedLocation = settings.location;
+
+  if (!newLocationName) {
+    resolvedLocation = DEFAULT_SETTINGS.location;
+  } else if (newLocationName !== settings.location.name) {
+    const submitBtn = settingsForm.querySelector('button[type="submit"]');
+    locationErrorEl.hidden = true;
+    submitBtn.disabled = true;
+    try {
+      resolvedLocation = await sendMessageWithRetry({ type: "resolve-location", query: newLocationName });
+      if (!resolvedLocation || typeof resolvedLocation.lat !== "number" || typeof resolvedLocation.lng !== "number") {
+        throw new Error("No location found");
+      }
+    } catch (error) {
+      console.error("[location] resolve failed:", error);
+      locationErrorEl.textContent = `Couldn't find "${newLocationName}" — check the spelling and try again.`;
+      locationErrorEl.hidden = false;
+      submitBtn.disabled = false;
+      return;
+    }
+    submitBtn.disabled = false;
+  }
+
+  const locationChanged = resolvedLocation.name !== settings.location.name ||
+    resolvedLocation.lat !== settings.location.lat ||
+    resolvedLocation.lng !== settings.location.lng;
+
   settings.searchEngine = searchEngineSelect.value;
   settings.appleId = appleIdInput.value.trim();
   settings.appSpecificPassword = applePasswordInput.value.trim();
+  settings.userName = nameInput.value.trim() || DEFAULT_SETTINGS.userName;
+  settings.location = resolvedLocation;
+
   await saveSettings();
   applySettings();
   settingsDialog.close();
 
   if (credentialsChanged) renderCalendar();
+  if (locationChanged) renderSunriseWidget();
 });
 
 settingsCancelBtn.addEventListener("click", () => settingsDialog.close());
@@ -864,11 +919,13 @@ setInterval(saveNewsProgress, 10_000);
 renderGreeting();
 renderClocks();
 setInterval(renderClocks, 30_000);
-loadSettings().then(() => renderCalendar());
+loadSettings().then(() => {
+  renderCalendar();
+  renderSunriseWidget();
+});
 renderIcsFeedCalendar();
 renderOnThisDay();
 renderCurrencyWidget();
-renderSunriseWidget();
 renderQuoteOfDay();
 loadNewsProgress().then(() => {
   renderNewsLogo();

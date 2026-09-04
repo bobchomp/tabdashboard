@@ -264,19 +264,56 @@ async function getExchangeRates() {
 }
 
 const SUNRISE_SUNSET_CACHE_KEY = "sunriseSunsetCache";
-const INVERNESS_LAT = 57.4778;
-const INVERNESS_LNG = -4.2247;
+const DEFAULT_LOCATION = { name: "Inverness", lat: 57.4778, lng: -4.2247, timezone: "Europe/London" };
+
+async function getConfiguredLocation() {
+  const stored = (await browser.storage.local.get(SETTINGS_STORAGE_KEY))[SETTINGS_STORAGE_KEY] || {};
+  const location = stored.location;
+  if (location && typeof location.lat === "number" && typeof location.lng === "number") {
+    return location;
+  }
+  return DEFAULT_LOCATION;
+}
+
+async function resolveLocation(query) {
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Location lookup failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const result = Array.isArray(data?.results) ? data.results[0] : null;
+  if (!result || typeof result.latitude !== "number" || typeof result.longitude !== "number") {
+    throw new Error(`No location found for "${query}"`);
+  }
+
+  return {
+    name: result.name,
+    lat: result.latitude,
+    lng: result.longitude,
+    timezone: result.timezone || "UTC",
+  };
+}
 
 async function getSunriseSunset() {
+  const location = await getConfiguredLocation();
   const dateKey = todayDateKey();
 
   const cached = (await browser.storage.local.get(SUNRISE_SUNSET_CACHE_KEY))[SUNRISE_SUNSET_CACHE_KEY];
-  if (cached && cached.dateKey === dateKey && cached.sunrise && cached.sunset) {
+  if (
+    cached &&
+    cached.dateKey === dateKey &&
+    cached.lat === location.lat &&
+    cached.lng === location.lng &&
+    cached.sunrise &&
+    cached.sunset
+  ) {
     console.log("[sunrise-sunset] serving cached times for", dateKey);
     return { sunrise: cached.sunrise, sunset: cached.sunset };
   }
 
-  const url = `https://api.sunrise-sunset.org/json?lat=${INVERNESS_LAT}&lng=${INVERNESS_LNG}&formatted=0`;
+  const url = `https://api.sunrise-sunset.org/json?lat=${location.lat}&lng=${location.lng}&formatted=0`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Sunrise/sunset request failed with status ${response.status}`);
@@ -289,7 +326,9 @@ async function getSunriseSunset() {
 
   const result = { sunrise: data.results.sunrise, sunset: data.results.sunset };
   console.log("[sunrise-sunset] fetched times for", dateKey);
-  await browser.storage.local.set({ [SUNRISE_SUNSET_CACHE_KEY]: { dateKey, ...result } });
+  await browser.storage.local.set({
+    [SUNRISE_SUNSET_CACHE_KEY]: { dateKey, lat: location.lat, lng: location.lng, ...result },
+  });
   return result;
 }
 
@@ -667,6 +706,13 @@ browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "get-sunrise-sunset") {
     return getSunriseSunset().catch((error) => {
       console.error("[sunrise-sunset] getSunriseSunset failed:", error);
+      throw error;
+    });
+  }
+
+  if (message?.type === "resolve-location") {
+    return resolveLocation(message.query).catch((error) => {
+      console.error("[location] resolveLocation failed:", error);
       throw error;
     });
   }

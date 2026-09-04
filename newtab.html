@@ -86,6 +86,18 @@
         </button>
       </div>
       <label>
+        Your name
+        <input id="name-input" type="text" placeholder="Your name" autocomplete="off">
+      </label>
+      <label>
+        Location
+        <input id="location-input" type="text" placeholder="e.g. Inverness" autocomplete="off">
+      </label>
+      <p id="location-error" class="settings-error" hidden></p>
+      <p class="settings-hint">
+        Used for the main clock and the sunrise/sunset widget.
+      </p>
+      <label>
         Search engine
         <select id="search-engine-select">
           <option value="duckduckgo">DuckDuckGo</option>
