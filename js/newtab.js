@@ -125,6 +125,16 @@ function renderClocks() {
       timeZone: timeZone === "local" ? undefined : timeZone,
     });
     el.querySelector(".clock-time").textContent = time;
+
+    const dateEl = el.querySelector(".clock-date");
+    if (dateEl) {
+      dateEl.textContent = now.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: timeZone === "local" ? undefined : timeZone,
+      });
+    }
   }
 }
 

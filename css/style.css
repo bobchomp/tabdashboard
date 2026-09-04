@@ -131,6 +131,12 @@ body {
   font-size: 14px;
 }
 
+.clock-date {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
 .settings-btn {
   position: fixed;
   top: 28px;
