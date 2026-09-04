@@ -1,0 +1,10 @@
+{
+  "headers": [
+    {
+      "source": "/latest/tabdashboard.xpi",
+      "headers": [
+        { "key": "Content-Type", "value": "application/x-xpinstall" }
+      ]
+    }
+  ]
+}

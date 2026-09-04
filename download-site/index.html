@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Tab Dashboard — Download</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card">
+    <div class="icon">🧭</div>
+    <h1>New Tab Dashboard</h1>
+    <p class="tagline">A personal Firefox New Tab replacement — clocks, calendar, news, weather and more.</p>
+
+    <a id="download-link" class="download-btn" href="latest/tabdashboard.xpi" download="tabdashboard.xpi">
+      Download for Firefox
+    </a>
+    <div id="meta" class="meta">Loading version info&hellip;</div>
+
+    <ol class="steps">
+      <li>Click the download button above.</li>
+      <li>Open the downloaded <code>tabdashboard.xpi</code> file with Firefox (or drag it into a Firefox window).</li>
+      <li>Click <strong>Add</strong> when Firefox asks to confirm the install.</li>
+    </ol>
+
+    <p class="hint">
+      Already installed? Firefox won't auto-update this since it's unlisted —
+      just re-download and re-install whenever there's a new version here.
+    </p>
+  </main>
+
+  <script>
+    fetch("latest/version.json", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const metaEl = document.getElementById("meta");
+        if (!data) {
+          metaEl.textContent = "";
+          return;
+        }
+        const updated = data.publishedAt
+          ? new Date(data.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+          : null;
+        metaEl.textContent = updated
+          ? `Version ${data.version} — updated ${updated}`
+          : `Version ${data.version}`;
+      })
+      .catch(() => {
+        document.getElementById("meta").textContent = "";
+      });
+  </script>
+</body>
+</html>

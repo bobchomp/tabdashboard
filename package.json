@@ -4,7 +4,9 @@
   "description": "Dev tooling for signing/packaging the New Tab dashboard extension. The extension itself has no build step.",
   "scripts": {
     "lint": "web-ext lint",
-    "sign": "web-ext sign --channel=unlisted"
+    "sign": "web-ext sign --channel=unlisted",
+    "publish-download": "node scripts/publish-download.js",
+    "release": "npm run sign && npm run publish-download"
   },
   "devDependencies": {
     "web-ext": "^10.6.0"

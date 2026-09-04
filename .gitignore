@@ -1,3 +1,4 @@
 node_modules/
 *.xpi
+!download-site/latest/*.xpi
 web-ext-artifacts/

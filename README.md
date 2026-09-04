@@ -128,11 +128,41 @@ fixture feeds, and the church rota feed). Your Apple ID and app-specific
 password are never in the code — those only ever live in
 `browser.storage.local`, entered via Settings.
 
+## Download site (`download-site/`)
+
+A small, self-contained static site with one page: a download button for
+the current signed `.xpi`, plus install instructions. It's meant to be
+deployed on Vercel with **Root Directory** set to `download-site/` in the
+Vercel project settings (this repo has no top-level `vercel.json`, only
+`download-site/vercel.json`, which just sets the right MIME type on the
+`.xpi` so Firefox offers to install it directly instead of just saving the
+file).
+
+The download link always points at the same URL
+(`latest/tabdashboard.xpi`) — only the file's *contents* change on each
+release, so the page never needs hand-editing. After signing:
+
+```
+npm run publish-download
+```
+
+copies the newest file from `web-ext-artifacts/` into
+`download-site/latest/tabdashboard.xpi` and writes
+`download-site/latest/version.json` (version + timestamp, which the page
+reads to show "Version X.X.X — updated …"). Commit and push
+`download-site/` to deploy the new version — Vercel redeploys automatically
+on push if the project is connected to this GitHub repo.
+
+`npm run release` does `sign` and `publish-download` in one go (still needs
+`WEB_EXT_API_KEY`/`WEB_EXT_API_SECRET` set, same as `npm run sign`).
+
 ## Project layout
 
 - `manifest.json` — extension manifest, overrides `chrome_url_overrides.newtab`
 - `newtab.html` / `css/style.css` / `js/newtab.js` — the dashboard page
 - `icons/icon.svg` — extension icon
+- `download-site/` — separate static site for downloading the signed build
+  (see above); not part of the extension itself
 
 ## Roadmap
 

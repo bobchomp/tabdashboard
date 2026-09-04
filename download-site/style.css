@@ -1,0 +1,113 @@
+:root {
+  color-scheme: light;
+  --surface: #ffffff;
+  --field-fill: #f7f4fc;
+  --text: #4a4460;
+  --text-dim: #9089a6;
+  --accent: #c9b8f0;
+  --accent-text: #453a73;
+  --shadow: rgba(170, 150, 225, 0.18);
+  --shadow-strong: rgba(170, 150, 225, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: linear-gradient(160deg, #fbf4ff 0%, #fdf3ec 55%, #f2fbf6 100%);
+  color: var(--text);
+  font-family: "Poppins", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.card {
+  width: min(440px, 100%);
+  background: var(--surface);
+  border-radius: 26px;
+  box-shadow: 0 16px 40px var(--shadow);
+  padding: 40px 36px;
+  text-align: center;
+}
+
+.icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.tagline {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0 0 28px;
+  line-height: 1.5;
+}
+
+.download-btn {
+  display: inline-block;
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  box-shadow: 0 10px 28px var(--shadow-strong);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px var(--shadow-strong);
+}
+
+.meta {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  min-height: 16px;
+}
+
+.steps {
+  text-align: left;
+  margin: 28px 0 0;
+  padding: 20px 20px 20px 40px;
+  background: var(--field-fill);
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.steps li + li {
+  margin-top: 6px;
+}
+
+.steps code {
+  background: rgba(74, 68, 96, 0.08);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.hint {
+  margin: 20px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
