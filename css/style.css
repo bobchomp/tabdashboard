@@ -157,6 +157,8 @@ body {
   top: 8vh;
   right: 28px;
   width: 300px;
+  max-height: calc(100vh - 8vh - 76px - 24px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -260,6 +262,10 @@ body {
 }
 
 .word-of-day-definition {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
   font-size: 15px;
   font-weight: 400;
   line-height: 1.5;
@@ -267,6 +273,10 @@ body {
 }
 
 .quote-of-day-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
   font-size: 15px;
   font-weight: 400;
   font-style: italic;
