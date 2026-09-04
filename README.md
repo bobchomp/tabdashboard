@@ -1,21 +1,23 @@
 # Custom New Tab Dashboard
 
 A personal Firefox New Tab replacement: a search bar with live suggestions,
-a world clock, an "on this day" history fact (with a GBP exchange rate,
-quote-of-the-day, and sunrise/sunset widget underneath), a calendar widget
-(iCloud plus a second subscribed ICS feed), and a live BBC News/Sport
-ticker, with settings stored locally via `browser.storage.local`. Plain
-HTML/CSS/JS, no build step. External requests: the chosen search engine's
-suggestion API as you type (DuckDuckGo, Google, Bing, or Ecosia — whichever
-is selected in Settings), BBC's public RSS feeds for the news ticker (cached
-~15 minutes), Wikipedia's public "on this day" API (cached per calendar
-day), Apple's iCloud CalDAV server for the calendar widget (cached ~15
-minutes, only if you've entered credentials in Settings), a hardcoded
-`.ics` subscription feed shown directly beneath it (cached ~15 minutes),
-Frankfurter's free exchange-rate API (`api.frankfurter.app`, ECB rates) for
-the GBP rate ticker, DummyJSON (`dummyjson.com/quotes/random`) for
-quote-of-the-day, sunrise-sunset.org for the sunrise/sunset times (all
-three cached per calendar day), and Open-Meteo's free geocoding API
+a world clock, an "on this day" history fact (with a GBP exchange rate and
+quote-of-the-day widget, plus a sunrise/sunset card that alternates with
+current weather, underneath), a calendar widget (iCloud plus a second
+subscribed ICS feed), and a live BBC News/Sport ticker, with settings
+stored locally via `browser.storage.local`. Plain HTML/CSS/JS, no build
+step. External requests: the chosen search engine's suggestion API as you
+type (DuckDuckGo, Google, Bing, or Ecosia — whichever is selected in
+Settings), BBC's public RSS feeds for the news ticker (cached ~15 minutes),
+Wikipedia's public "on this day" API (cached per calendar day), Apple's
+iCloud CalDAV server for the calendar widget (cached ~15 minutes, only if
+you've entered credentials in Settings), a hardcoded `.ics` subscription
+feed shown directly beneath it (cached ~15 minutes), Frankfurter's free
+exchange-rate API (`api.frankfurter.app`, ECB rates) for the GBP rate
+ticker, DummyJSON (`dummyjson.com/quotes/random`) for quote-of-the-day,
+sunrise-sunset.org for the sunrise/sunset times (cached per calendar day),
+Open-Meteo's free forecast API (`api.open-meteo.com`) for current weather
+(cached ~20 minutes), and Open-Meteo's free geocoding API
 (`geocoding-api.open-meteo.com`) to resolve the location you type into
 Settings into coordinates + timezone (only called when you change it, then
 cached).

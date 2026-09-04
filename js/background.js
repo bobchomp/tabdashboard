@@ -332,6 +332,78 @@ async function getSunriseSunset() {
   return result;
 }
 
+const WEATHER_CACHE_KEY = "weatherCache";
+const WEATHER_CACHE_MS = 20 * 60 * 1000;
+
+// WMO weather codes (used by Open-Meteo) collapsed into a handful of
+// general buckets, each matched to a simple icon on the newtab side.
+const WEATHER_CODE_MAP = {
+  0: { label: "Clear sky", icon: "sun" },
+  1: { label: "Mainly clear", icon: "sun" },
+  2: { label: "Partly cloudy", icon: "cloud" },
+  3: { label: "Overcast", icon: "cloud" },
+  45: { label: "Fog", icon: "cloud" },
+  48: { label: "Fog", icon: "cloud" },
+  51: { label: "Light drizzle", icon: "rain" },
+  53: { label: "Drizzle", icon: "rain" },
+  55: { label: "Dense drizzle", icon: "rain" },
+  56: { label: "Freezing drizzle", icon: "rain" },
+  57: { label: "Freezing drizzle", icon: "rain" },
+  61: { label: "Light rain", icon: "rain" },
+  63: { label: "Rain", icon: "rain" },
+  65: { label: "Heavy rain", icon: "rain" },
+  66: { label: "Freezing rain", icon: "rain" },
+  67: { label: "Freezing rain", icon: "rain" },
+  71: { label: "Light snow", icon: "snow" },
+  73: { label: "Snow", icon: "snow" },
+  75: { label: "Heavy snow", icon: "snow" },
+  77: { label: "Snow grains", icon: "snow" },
+  80: { label: "Rain showers", icon: "rain" },
+  81: { label: "Rain showers", icon: "rain" },
+  82: { label: "Violent rain showers", icon: "rain" },
+  85: { label: "Snow showers", icon: "snow" },
+  86: { label: "Snow showers", icon: "snow" },
+  95: { label: "Thunderstorm", icon: "storm" },
+  96: { label: "Thunderstorm with hail", icon: "storm" },
+  99: { label: "Thunderstorm with hail", icon: "storm" },
+};
+
+async function getWeather() {
+  const location = await getConfiguredLocation();
+
+  const cached = (await browser.storage.local.get(WEATHER_CACHE_KEY))[WEATHER_CACHE_KEY];
+  if (
+    cached &&
+    cached.lat === location.lat &&
+    cached.lng === location.lng &&
+    Date.now() - cached.fetchedAt < WEATHER_CACHE_MS
+  ) {
+    console.log("[weather] serving cached weather");
+    return { tempC: cached.tempC, label: cached.label, icon: cached.icon };
+  }
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lng}&current=temperature_2m,weather_code&temperature_unit=celsius`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Weather request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const current = data?.current;
+  if (!current || typeof current.temperature_2m !== "number" || typeof current.weather_code !== "number") {
+    throw new Error("Unexpected weather response shape");
+  }
+
+  const condition = WEATHER_CODE_MAP[current.weather_code] || { label: "Unknown", icon: "cloud" };
+  const result = { tempC: current.temperature_2m, label: condition.label, icon: condition.icon };
+
+  console.log("[weather] fetched:", result.label, result.tempC);
+  await browser.storage.local.set({
+    [WEATHER_CACHE_KEY]: { fetchedAt: Date.now(), lat: location.lat, lng: location.lng, ...result },
+  });
+  return result;
+}
+
 const CALDAV_ROOT = "https://caldav.icloud.com/";
 const CALENDAR_DISCOVERY_CACHE_KEY = "calendarDiscoveryCache";
 const CALENDAR_EVENTS_CACHE_KEY = "calendarEventsCache";
@@ -713,6 +785,13 @@ browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "resolve-location") {
     return resolveLocation(message.query).catch((error) => {
       console.error("[location] resolveLocation failed:", error);
+      throw error;
+    });
+  }
+
+  if (message?.type === "get-weather") {
+    return getWeather().catch((error) => {
+      console.error("[weather] getWeather failed:", error);
       throw error;
     });
   }

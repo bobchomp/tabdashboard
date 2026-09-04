@@ -348,6 +348,9 @@ async function handleAutoTick() {
   if (currencyRates.length >= 2) {
     entries.push({ el: currencyWidgetEl, advance: advanceCurrencyIndex });
   }
+  if (sunriseTimes && weatherData) {
+    entries.push({ el: sunriseWidgetEl, advance: advanceSunriseWidgetView });
+  }
   if (tickCount % 2 === 0) {
     if (onThisDayEvents.length >= 2) entries.push({ el: onThisDayEl, advance: advanceOnThisDayIndex });
     if (quoteOfDayItems.length >= 2) entries.push({ el: quoteWidgetEl, advance: advanceQuoteIndex });
@@ -360,7 +363,11 @@ function startAutoRotate() {
   if (rotateAutoTimer) clearInterval(rotateAutoTimer);
   rotateAutoTimer = null;
   tickCount = 0;
-  const canRotateAny = onThisDayEvents.length >= 2 || quoteOfDayItems.length >= 2 || currencyRates.length >= 2;
+  const canRotateAny =
+    onThisDayEvents.length >= 2 ||
+    quoteOfDayItems.length >= 2 ||
+    currencyRates.length >= 2 ||
+    (sunriseTimes && weatherData);
   if (!canRotateAny) return;
   rotateAutoTimer = setInterval(handleAutoTick, TICK_MS);
 }
@@ -429,20 +436,47 @@ function formatDayTime(isoString) {
   return new Date(isoString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-async function renderSunriseWidget() {
-  let times;
-  try {
-    times = await sendMessageWithRetry({ type: "get-sunrise-sunset" });
-  } catch (error) {
-    console.error("[sunrise-sunset] sendMessage failed:", error);
-    times = null;
-  }
+const WEATHER_ICONS = {
+  sun: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="5"></circle>
+    <line x1="12" y1="1" x2="12" y2="3"></line>
+    <line x1="12" y1="21" x2="12" y2="23"></line>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+    <line x1="1" y1="12" x2="3" y2="12"></line>
+    <line x1="21" y1="12" x2="23" y2="12"></line>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+  </svg>`,
+  cloud: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+  </svg>`,
+  rain: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="16" y1="13" x2="16" y2="21"></line>
+    <line x1="8" y1="13" x2="8" y2="21"></line>
+    <line x1="12" y1="15" x2="12" y2="23"></line>
+    <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"></path>
+  </svg>`,
+  snow: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25"></path>
+    <line x1="8" y1="16" x2="8.01" y2="16"></line>
+    <line x1="8" y1="20" x2="8.01" y2="20"></line>
+    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+    <line x1="12" y1="22" x2="12.01" y2="22"></line>
+    <line x1="16" y1="16" x2="16.01" y2="16"></line>
+    <line x1="16" y1="20" x2="16.01" y2="20"></line>
+  </svg>`,
+  storm: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"></path>
+    <polyline points="13 11 9 17 15 17 11 23"></polyline>
+  </svg>`,
+};
 
-  if (!times || !times.sunrise || !times.sunset) {
-    renderSideWidgetMessage(sunriseWidgetEl, "Sunrise & sunset", "Unable to load sunrise/sunset times today.");
-    return;
-  }
+let sunriseTimes = null;
+let weatherData = null;
+let sunriseWidgetView = "sunrise";
 
+function renderSunriseSunsetView() {
   sunriseWidgetEl.innerHTML = "";
 
   const locationName = (settings.location || DEFAULT_SETTINGS.location).name;
@@ -454,8 +488,8 @@ async function renderSunriseWidget() {
   rows.className = "sunrise-rows";
 
   const entries = [
-    ["Sunrise", times.sunrise],
-    ["Sunset", times.sunset],
+    ["Sunrise", sunriseTimes.sunrise],
+    ["Sunset", sunriseTimes.sunset],
   ];
 
   for (const [name, iso] of entries) {
@@ -475,6 +509,79 @@ async function renderSunriseWidget() {
   }
 
   sunriseWidgetEl.append(label, rows);
+}
+
+function renderWeatherView() {
+  sunriseWidgetEl.innerHTML = "";
+
+  const locationName = (settings.location || DEFAULT_SETTINGS.location).name;
+  const label = document.createElement("div");
+  label.className = "side-widget-label";
+  label.textContent = `Weather (${locationName})`;
+
+  const row = document.createElement("div");
+  row.className = "weather-row";
+  row.innerHTML = WEATHER_ICONS[weatherData.icon] || WEATHER_ICONS.cloud;
+
+  const temp = document.createElement("div");
+  temp.className = "weather-temp";
+  temp.textContent = `${Math.round(weatherData.tempC)}°C`;
+  row.appendChild(temp);
+
+  const condition = document.createElement("div");
+  condition.className = "weather-condition";
+  condition.textContent = weatherData.label;
+
+  sunriseWidgetEl.append(label, row, condition);
+}
+
+function renderSunriseWidgetContent() {
+  if (sunriseWidgetView === "weather" && weatherData) {
+    renderWeatherView();
+  } else if (sunriseTimes) {
+    renderSunriseSunsetView();
+  } else if (weatherData) {
+    renderWeatherView();
+  }
+}
+
+function advanceSunriseWidgetView() {
+  sunriseWidgetView = sunriseWidgetView === "sunrise" ? "weather" : "sunrise";
+  renderSunriseWidgetContent();
+}
+
+async function renderSunriseWidget() {
+  const [sunriseResult, weatherResult] = await Promise.allSettled([
+    sendMessageWithRetry({ type: "get-sunrise-sunset" }),
+    sendMessageWithRetry({ type: "get-weather" }),
+  ]);
+
+  sunriseTimes =
+    sunriseResult.status === "fulfilled" && sunriseResult.value?.sunrise && sunriseResult.value?.sunset
+      ? sunriseResult.value
+      : null;
+  if (sunriseResult.status === "rejected") {
+    console.error("[sunrise-sunset] sendMessage failed:", sunriseResult.reason);
+  }
+
+  weatherData =
+    weatherResult.status === "fulfilled" &&
+    weatherResult.value &&
+    typeof weatherResult.value.tempC === "number"
+      ? weatherResult.value
+      : null;
+  if (weatherResult.status === "rejected") {
+    console.error("[weather] sendMessage failed:", weatherResult.reason);
+  }
+
+  sunriseWidgetView = "sunrise";
+
+  if (!sunriseTimes && !weatherData) {
+    renderSideWidgetMessage(sunriseWidgetEl, "Sunrise & weather", "Unable to load sunrise/sunset or weather today.");
+  } else {
+    renderSunriseWidgetContent();
+  }
+  startAutoRotate();
 }
 
 onThisDayEl.addEventListener("click", (event) => {
