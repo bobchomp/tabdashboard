@@ -409,6 +409,10 @@ const CALENDAR_DISCOVERY_CACHE_KEY = "calendarDiscoveryCache";
 const CALENDAR_EVENTS_CACHE_KEY = "calendarEventsCache";
 const CALENDAR_DISCOVERY_CACHE_MS = 24 * 60 * 60 * 1000;
 const CALENDAR_EVENTS_CACHE_MS = 15 * 60 * 1000;
+// Bump this whenever what gets merged into the cached event list changes
+// (e.g. adding/removing a feed) so an in-flight cache from before the
+// change doesn't get served as if it already reflects it.
+const CALENDAR_CACHE_VERSION = 2;
 const CALENDAR_LOOKAHEAD_DAYS = 7;
 const CALENDAR_MAX_EVENTS = 20;
 const CALDAV_NS = "DAV:";
@@ -674,6 +678,7 @@ async function getUpcomingCalendarEvents() {
   const cached = (await browser.storage.local.get(CALENDAR_EVENTS_CACHE_KEY))[CALENDAR_EVENTS_CACHE_KEY];
   if (
     cached &&
+    cached.version === CALENDAR_CACHE_VERSION &&
     cached.appleId === credentials.appleId &&
     Date.now() - cached.fetchedAt < CALENDAR_EVENTS_CACHE_MS
   ) {
@@ -715,7 +720,12 @@ async function getUpcomingCalendarEvents() {
 
   console.log("[calendar] events after filtering:", events.length);
   await browser.storage.local.set({
-    [CALENDAR_EVENTS_CACHE_KEY]: { appleId: credentials.appleId, fetchedAt: Date.now(), events },
+    [CALENDAR_EVENTS_CACHE_KEY]: {
+      version: CALENDAR_CACHE_VERSION,
+      appleId: credentials.appleId,
+      fetchedAt: Date.now(),
+      events,
+    },
   });
   return events;
 }
