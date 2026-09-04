@@ -114,6 +114,25 @@ function runCapture(cmd, args) {
   return (result.stdout || "").trim();
 }
 
+// AMO rejects a signing submission that reuses a version number already
+// submitted, so each release needs a fresh one. Bumps the patch number in
+// manifest.json with a targeted regex replace (rather than
+// JSON.parse/stringify) so the file's formatting is left untouched.
+function bumpPatchVersion() {
+  const manifestPath = path.join(repoRoot, "manifest.json");
+  const text = fs.readFileSync(manifestPath, "utf8");
+  const match = text.match(/"version":\s*"(\d+)\.(\d+)\.(\d+)"/);
+  if (!match) {
+    console.error('Could not find a "version": "X.Y.Z" field in manifest.json — aborting.');
+    process.exit(1);
+  }
+  const [full, major, minor, patch] = match;
+  const nextVersion = `${major}.${minor}.${Number(patch) + 1}`;
+  const updated = text.replace(full, `"version": "${nextVersion}"`);
+  fs.writeFileSync(manifestPath, updated);
+  return nextVersion;
+}
+
 async function main() {
   console.log("== New Tab Dashboard: sign, publish, and push ==\n");
   console.log("Get a free API key/secret at https://addons.mozilla.org/developers/addon/api/key/");
@@ -131,6 +150,9 @@ async function main() {
     process.exit(1);
   }
 
+  const version = bumpPatchVersion();
+  console.log(`\nBumped manifest.json to v${version}.`);
+
   console.log("\n-- Signing with Mozilla --");
   run("npx", ["web-ext", "sign", "--channel=unlisted"], {
     env: { WEB_EXT_API_KEY: apiKey, WEB_EXT_API_SECRET: apiSecret },
@@ -140,11 +162,8 @@ async function main() {
   console.log("\n-- Copying the signed build into download-site/ --");
   run("node", ["scripts/publish-download.js"]);
 
-  const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, "manifest.json"), "utf8"));
-  const version = manifest.version;
-
   console.log("\n-- Committing and pushing --");
-  run("git", ["add", "download-site"]);
+  run("git", ["add", "download-site", "manifest.json"]);
 
   const staged = runCapture("git", ["diff", "--cached", "--name-only"]);
   if (!staged) {
