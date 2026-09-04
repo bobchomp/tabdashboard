@@ -30,7 +30,10 @@
     "https://api.frankfurter.app/*",
     "https://api.sunrise-sunset.org/*",
     "https://geocoding-api.open-meteo.com/*",
-    "https://api.open-meteo.com/*"
+    "https://api.open-meteo.com/*",
+    "https://ics.fixtur.es/*",
+    "https://ics.ecal.com/*",
+    "https://smithton.churchsuite.com/*"
   ],
   "browser_specific_settings": {
     "gecko": {

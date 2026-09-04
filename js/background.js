@@ -410,7 +410,7 @@ const CALENDAR_EVENTS_CACHE_KEY = "calendarEventsCache";
 const CALENDAR_DISCOVERY_CACHE_MS = 24 * 60 * 60 * 1000;
 const CALENDAR_EVENTS_CACHE_MS = 15 * 60 * 1000;
 const CALENDAR_LOOKAHEAD_DAYS = 7;
-const CALENDAR_MAX_EVENTS = 8;
+const CALENDAR_MAX_EVENTS = 20;
 const CALDAV_NS = "DAV:";
 const CALDAV_CAL_NS = "urn:ietf:params:xml:ns:caldav";
 
@@ -636,6 +636,37 @@ async function fetchAllCalendarEvents(credentials, calendars, rangeStart, rangeE
   return allEvents;
 }
 
+// Public .ics feeds folded into the Apple calendar widget alongside the
+// CalDAV events — fixture lists and a church rota, not tied to the Apple ID.
+const EXTRA_CALENDAR_FEED_URLS = [
+  "https://ics.fixtur.es/v2/ross-county.ics?90d022a450a049c8",
+  "https://ics.ecal.com/ecal-sub/66d1d58368f1fc0008e4629d/English%20Premier%20League.ics",
+  "https://smithton.churchsuite.com/my/ical/rotas/8381b30a4ada15ebf6016eb675d3252a",
+  "https://ics.fixtur.es/v2/brentford-fc.ics?5b5429364fa6cb0c",
+];
+
+async function fetchExtraCalendarFeed(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Extra calendar feed request failed with status ${response.status} for ${url}`);
+  }
+  const text = await response.text();
+  return extractEvents(text);
+}
+
+async function getExtraCalendarFeedEvents() {
+  const results = await Promise.allSettled(EXTRA_CALENDAR_FEED_URLS.map(fetchExtraCalendarFeed));
+  const events = [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      events.push(...result.value);
+    } else {
+      console.error("[calendar] extra feed failed:", EXTRA_CALENDAR_FEED_URLS[index], result.reason);
+    }
+  });
+  return events;
+}
+
 async function getUpcomingCalendarEvents() {
   const credentials = await getCalendarCredentials();
   if (!credentials) return null;
@@ -666,6 +697,11 @@ async function getUpcomingCalendarEvents() {
     console.log("[calendar] re-discovered calendars:", calendars.length);
     allEvents = await fetchAllCalendarEvents(credentials, calendars, rangeStart, rangeEnd);
   }
+
+  const extraEvents = (await getExtraCalendarFeedEvents()).filter(
+    (event) => event.start >= rangeStart && event.start <= rangeEnd
+  );
+  allEvents.push(...extraEvents);
 
   const events = allEvents
     .sort((a, b) => a.start - b.start)

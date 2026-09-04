@@ -56,16 +56,26 @@ from any `icloud.com` host only — the same technique standalone "CORS
 unblock" extensions use, just scoped to this one host instead of every
 site.
 
+### Extra fixture/rota feeds (folded into the Apple calendar)
+
+Four more public `.ics` feeds — Ross County FC, the Premier League, a
+church rota, and Brentford FC — are fetched and merged directly into the
+Apple calendar widget's event list (sorted together with the CalDAV
+events), rather than shown as their own section. They only appear once an
+Apple ID is configured, since the whole widget is gated on that. Their
+URLs are hardcoded in `js/background.js` alongside the second calendar's
+feed below.
+
 ### Second calendar (ICS feed)
 
 A second calendar — a `webcal://` subscription link — is fetched and shown
 directly beneath the iCloud one, in the same plain style with no heading of
 its own. The feed URL (which includes an access token) is hardcoded in
-`js/background.js`; since that file is committed to this repo, treat the
-repo itself as sensitive if it ever needs to be shared or made public.
-Unlike the iCloud calendar, this is a plain `.ics` file over a normal GET
-request, so it didn't need the CORS workaround above — just a host
-permission for that domain.
+`js/background.js`, same as the extra fixture/rota feeds above; since that
+file is committed to this repo, treat the repo itself as sensitive if it
+ever needs to be shared or made public. Unlike the iCloud calendar, these
+are plain `.ics` files over a normal GET request, so they didn't need the
+CORS workaround above — just a host permission per domain.
 
 ## Try it out (temporary install)
 
