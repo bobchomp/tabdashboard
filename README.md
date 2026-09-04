@@ -153,8 +153,17 @@ reads to show "Version X.X.X — updated …"). Commit and push
 `download-site/` to deploy the new version — Vercel redeploys automatically
 on push if the project is connected to this GitHub repo.
 
-`npm run release` does `sign` and `publish-download` in one go (still needs
-`WEB_EXT_API_KEY`/`WEB_EXT_API_SECRET` set, same as `npm run sign`).
+`npm run release` does the whole thing in one go: it interactively asks for
+your AMO API key and secret (the secret is masked as you type, and neither
+value is ever written to disk or the shell's history), signs, publishes,
+then commits and pushes `download-site/` for you so Vercel redeploys. Just
+run:
+
+```
+npm run release
+```
+
+and follow the prompts.
 
 ## Project layout
 

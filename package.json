@@ -6,7 +6,7 @@
     "lint": "web-ext lint",
     "sign": "web-ext sign --channel=unlisted",
     "publish-download": "node scripts/publish-download.js",
-    "release": "npm run sign && npm run publish-download"
+    "release": "node scripts/release.js"
   },
   "devDependencies": {
     "web-ext": "^10.6.0"
