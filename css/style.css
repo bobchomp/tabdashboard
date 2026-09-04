@@ -517,6 +517,98 @@ body {
   background: var(--field-fill);
 }
 
+.links-section {
+  width: 100%;
+}
+
+.links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 108px);
+  justify-content: center;
+  gap: 24px;
+}
+
+.link-tile, .add-tile {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  border-radius: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  background: var(--surface);
+  border: none;
+  box-shadow: 0 8px 20px var(--shadow);
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+.link-tile:visited {
+  color: var(--text);
+}
+
+.link-tile:hover, .add-tile:hover {
+  box-shadow: 0 12px 26px var(--shadow-strong);
+  transform: translateY(-2px);
+}
+
+.tile-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 20px;
+}
+
+.tile-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-tile {
+  color: var(--text-dim);
+  background: transparent;
+  border: 2px dashed #d9cdf2;
+  box-shadow: none;
+}
+
+.add-tile:hover {
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.tile-edit {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: none;
+  box-shadow: 0 4px 10px var(--shadow-strong);
+  color: var(--text-dim);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.link-tile:hover .tile-edit {
+  display: flex;
+}
+
 dialog {
   border: none;
   border-radius: 24px;
