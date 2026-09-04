@@ -1,0 +1,12 @@
+{
+  "name": "tabdashboard",
+  "private": true,
+  "description": "Dev tooling for signing/packaging the New Tab dashboard extension. The extension itself has no build step.",
+  "scripts": {
+    "lint": "web-ext lint",
+    "sign": "web-ext sign --channel=unlisted"
+  },
+  "devDependencies": {
+    "web-ext": "^10.6.0"
+  }
+}

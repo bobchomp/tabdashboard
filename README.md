@@ -91,29 +91,42 @@ good for iterating but not for daily use.
 
 Firefox only keeps non-temporary extensions installed if they're signed by
 Mozilla. For a personal extension you don't want listed publicly, use
-Mozilla's free **unlisted / self-distribution** signing:
+Mozilla's free **unlisted / self-distribution** signing via `web-ext`
+(Mozilla's own CLI, already set up as a dev dependency in this repo —
+`npm install` pulls it in; it's dev tooling only, the extension itself still
+has no build step):
 
-1. Zip the extension contents (not the folder itself):
+1. Get a free AMO API key/secret at
+   https://addons.mozilla.org/developers/addon/api/key/ (requires a free
+   Firefox account). Keep the secret private — treat it like a password.
+2. Run the signing script from the repo root, with those two values as
+   environment variables so they never appear in shell history or process
+   listings:
    ```
    cd /home/user/tabdashboard
-   zip -r -FS ../tabdashboard.xpi * -x '*.git*'
+   npm install
+   WEB_EXT_API_KEY=your-key WEB_EXT_API_SECRET=your-secret npm run sign
    ```
-2. Go to https://addons.mozilla.org/developers/addon/submit/distribution
-   (requires a free Firefox account) and choose **"On your own"** (unlisted).
-3. Upload `tabdashboard.xpi`. Mozilla runs an automated validation and signs
-   it — usually within a few minutes.
-4. Download the signed `.xpi` from the submission page and open it with
-   Firefox (drag it into a Firefox window, or File → Open File). Firefox will
-   prompt to install it permanently.
-5. Future updates: bump `"version"` in `manifest.json`, re-zip, and re-submit
-   through the same listing page — Firefox will treat it as an update if the
+   This validates the extension, submits it for Mozilla's automated review,
+   and — usually within a few minutes — downloads the signed `.xpi` into
+   `web-ext-artifacts/` (gitignored).
+3. Open the signed `.xpi` with Firefox (drag it into a Firefox window, or
+   File → Open File). Firefox will prompt to install it permanently.
+4. Future updates: bump `"version"` in `manifest.json`, then re-run the same
+   `npm run sign` command — Firefox treats it as an update as long as
    `gecko.id` in `manifest.json` stays the same. A version that adds a new
-   `host_permissions` entry (like the BBC feed access added for the news
-   ticker) will prompt you to accept the new permission on update.
+   permission (like several added this session) will prompt you to accept
+   it on update.
 
-Alternatively, `web-ext` (Mozilla's CLI, `npm install -g web-ext`) can drive
-steps 1–4 for you: `web-ext sign --api-key=... --api-secret=...` using an API
-key from https://addons.mozilla.org/developers/addon/api/key/.
+`npm run lint` runs `web-ext lint` on its own (no API key needed) if you
+just want to validate the manifest/extension without signing.
+
+Submitting for signing uploads the extension to Mozilla's servers — worth
+knowing since `js/background.js` has a few feed URLs with access tokens
+hardcoded in it (the Dollops Ice Cream feed, the Ross County/Brentford
+fixture feeds, and the church rota feed). Your Apple ID and app-specific
+password are never in the code — those only ever live in
+`browser.storage.local`, entered via Settings.
 
 ## Project layout
 
