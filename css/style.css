@@ -567,6 +567,12 @@ body {
   font-size: 20px;
 }
 
+.tile-favicon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
 .tile-label {
   font-size: 13px;
   font-weight: 500;

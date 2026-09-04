@@ -926,6 +926,22 @@ function normalizeUrl(raw) {
   return `https://${trimmed}`;
 }
 
+function faviconUrlFor(pageUrl) {
+  try {
+    const { hostname } = new URL(pageUrl);
+    return `https://www.google.com/s2/favicons?sz=64&domain=${hostname}`;
+  } catch {
+    return null;
+  }
+}
+
+function showFallbackIcon(icon, link, palette) {
+  icon.innerHTML = "";
+  icon.style.background = palette.bg;
+  icon.style.color = palette.text;
+  icon.textContent = (link.title || link.url).trim().charAt(0).toUpperCase();
+}
+
 function render() {
   linksGrid.innerHTML = "";
 
@@ -938,9 +954,19 @@ function render() {
 
     const icon = document.createElement("div");
     icon.className = "tile-icon";
-    icon.style.background = palette.bg;
-    icon.style.color = palette.text;
-    icon.textContent = (link.title || link.url).trim().charAt(0).toUpperCase();
+
+    const faviconUrl = faviconUrlFor(link.url);
+    if (faviconUrl) {
+      icon.style.background = "#fff";
+      const img = document.createElement("img");
+      img.className = "tile-favicon";
+      img.src = faviconUrl;
+      img.alt = "";
+      img.addEventListener("error", () => showFallbackIcon(icon, link, palette));
+      icon.appendChild(img);
+    } else {
+      showFallbackIcon(icon, link, palette);
+    }
 
     const label = document.createElement("div");
     label.className = "tile-label";
