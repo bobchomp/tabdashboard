@@ -663,6 +663,7 @@ async function getExtraCalendarFeedEvents() {
   const events = [];
   results.forEach((result, index) => {
     if (result.status === "fulfilled") {
+      console.log("[calendar] extra feed parsed:", EXTRA_CALENDAR_FEED_URLS[index], result.value.length, "events");
       events.push(...result.value);
     } else {
       console.error("[calendar] extra feed failed:", EXTRA_CALENDAR_FEED_URLS[index], result.reason);
@@ -703,8 +704,15 @@ async function getUpcomingCalendarEvents() {
     allEvents = await fetchAllCalendarEvents(credentials, calendars, rangeStart, rangeEnd);
   }
 
-  const extraEvents = (await getExtraCalendarFeedEvents()).filter(
-    (event) => event.start >= rangeStart && event.start <= rangeEnd
+  const rawExtraEvents = await getExtraCalendarFeedEvents();
+  const extraEvents = rawExtraEvents.filter((event) => event.start >= rangeStart && event.start <= rangeEnd);
+  console.log(
+    "[calendar] extra feed events in range:",
+    extraEvents.length,
+    "of",
+    rawExtraEvents.length,
+    "parsed; personal calendar events:",
+    allEvents.length
   );
   allEvents.push(...extraEvents);
 
