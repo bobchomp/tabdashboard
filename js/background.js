@@ -208,18 +208,23 @@ async function getQuoteOfTheDay(force = false) {
     return cached.quotes;
   }
 
-  const results = await Promise.allSettled(
-    Array.from({ length: QUOTE_OF_DAY_PICK_COUNT }, () => fetchRandomQuote())
-  );
-
-  const seen = new Set();
+  // Fetches in rounds rather than one parallel batch so a duplicate author
+  // (dummyjson's random endpoint can repeat one) gets a retry slot instead
+  // of just being dropped, capped at a few rounds in case the API keeps
+  // returning the same author.
+  const seenAuthors = new Set();
   const quotes = [];
-  for (const result of results) {
-    if (result.status !== "fulfilled" || !result.value) continue;
-    const key = `${result.value.text}|${result.value.author}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    quotes.push(result.value);
+  const maxRounds = 4;
+
+  for (let round = 0; round < maxRounds && quotes.length < QUOTE_OF_DAY_PICK_COUNT; round++) {
+    const needed = QUOTE_OF_DAY_PICK_COUNT - quotes.length;
+    const results = await Promise.allSettled(Array.from({ length: needed }, () => fetchRandomQuote()));
+    for (const result of results) {
+      if (result.status !== "fulfilled" || !result.value) continue;
+      if (seenAuthors.has(result.value.author)) continue;
+      seenAuthors.add(result.value.author);
+      quotes.push(result.value);
+    }
   }
 
   if (!quotes.length) throw new Error("No quotes could be resolved");
