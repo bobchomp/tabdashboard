@@ -189,12 +189,35 @@ function todayDateKey() {
 const QUOTE_OF_DAY_CACHE_KEY = "quoteOfDayCache";
 const QUOTE_OF_DAY_PICK_COUNT = 3;
 
+// Best-effort keyword filter, not exhaustive — quotes whose text matches any
+// of these (word-boundary, case-insensitive) are skipped rather than shown.
+const QUOTE_BLOCKED_TERMS = [
+  // Non-Christian religions and their adherents/texts
+  "islam", "muslim", "quran", "koran", "allah",
+  "buddha", "buddhis", // buddhist, buddhism
+  "hindu",
+  "judaism", "jewish", "jew\\b", "torah", "talmud", // "jew\\b" avoids matching "jewelry"
+  "sikh",
+  "atheis", // atheist, atheism
+  "agnostic", "pagan", "wiccan",
+  "taois", // taoist, taoism
+  "shinto", "confucian", "confucius",
+  "zoroastrian", "bahai",
+  // Sexual/suggestive language
+  "sexy", "sexual", "seductive", "erotic", "nude", "naked", "porn",
+];
+
+function isQuoteAllowed(text) {
+  return !QUOTE_BLOCKED_TERMS.some((term) => new RegExp(`\\b${term}`, "i").test(text));
+}
+
 async function fetchRandomQuote() {
   const response = await fetch("https://dummyjson.com/quotes/random");
   if (!response.ok) return null;
 
   const data = await response.json();
   if (!data || typeof data.quote !== "string" || typeof data.author !== "string") return null;
+  if (!isQuoteAllowed(data.quote)) return null;
 
   return { text: data.quote, author: data.author };
 }
