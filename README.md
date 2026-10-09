@@ -14,7 +14,7 @@ iCloud CalDAV server for the calendar widget (cached ~15 minutes, only if
 you've entered credentials in Settings), a hardcoded `.ics` subscription
 feed shown directly beneath it (cached ~15 minutes), Frankfurter's free
 exchange-rate API (`api.frankfurter.app`, ECB rates) for the GBP rate
-ticker, DummyJSON (`dummyjson.com/quotes/random`) for quote-of-the-day,
+ticker, ZenQuotes (`zenquotes.io/api/random`) for quote-of-the-day,
 sunrise-sunset.org for the sunrise/sunset times (cached per calendar day),
 Open-Meteo's free forecast API (`api.open-meteo.com`) for current weather
 (cached ~20 minutes), and Open-Meteo's free geocoding API

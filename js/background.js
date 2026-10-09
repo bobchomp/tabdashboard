@@ -212,14 +212,18 @@ function isQuoteAllowed(text) {
 }
 
 async function fetchRandomQuote() {
-  const response = await fetch("https://dummyjson.com/quotes/random");
+  const response = await fetch("https://zenquotes.io/api/random");
   if (!response.ok) return null;
 
   const data = await response.json();
-  if (!data || typeof data.quote !== "string" || typeof data.author !== "string") return null;
-  if (!isQuoteAllowed(data.quote)) return null;
+  const entry = Array.isArray(data) ? data[0] : null;
+  if (!entry || typeof entry.q !== "string" || typeof entry.a !== "string") return null;
+  // When rate-limited, ZenQuotes responds 200 OK with a placeholder quote
+  // attributed to itself rather than an HTTP error — treat that as a miss.
+  if (entry.a.trim().toLowerCase() === "zenquotes.io") return null;
+  if (!isQuoteAllowed(entry.q)) return null;
 
-  return { text: data.quote, author: data.author };
+  return { text: entry.q, author: entry.a };
 }
 
 async function getQuoteOfTheDay(force = false) {
@@ -232,7 +236,7 @@ async function getQuoteOfTheDay(force = false) {
   }
 
   // Fetches in rounds rather than one parallel batch so a duplicate author
-  // (dummyjson's random endpoint can repeat one) gets a retry slot instead
+  // (ZenQuotes' random endpoint can repeat one) gets a retry slot instead
   // of just being dropped, capped at a few rounds in case the API keeps
   // returning the same author.
   const seenAuthors = new Set();
