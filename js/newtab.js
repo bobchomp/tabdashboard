@@ -1114,13 +1114,26 @@ settingsForm.addEventListener("submit", async (event) => {
 settingsCancelBtn.addEventListener("click", () => settingsDialog.close());
 settingsCloseBtn.addEventListener("click", () => settingsDialog.close());
 
+const REFRESH_BUTTON_TIMEOUT_MS = 20_000;
+
 async function handleRefreshClick(button, refresh) {
   if (button.disabled) return;
   button.disabled = true;
   const originalHTML = button.innerHTML;
   button.textContent = "Refreshing…";
   try {
-    await refresh(true);
+    // Bounds the button's own disabled/"Refreshing…" state, independent of
+    // whatever refresh() is awaiting — so a stalled fetch, a background
+    // script that never responds, or any other hang downstream can't leave
+    // the button stuck forever.
+    await Promise.race([
+      refresh(true),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Refresh timed out")), REFRESH_BUTTON_TIMEOUT_MS)
+      ),
+    ]);
+  } catch (error) {
+    console.error("[refresh-button] refresh failed:", error);
   } finally {
     button.disabled = false;
     button.innerHTML = originalHTML;

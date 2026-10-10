@@ -211,19 +211,33 @@ function isQuoteAllowed(text) {
   return !QUOTE_BLOCKED_TERMS.some((term) => new RegExp(`\\b${term}`, "i").test(text));
 }
 
+const QUOTE_FETCH_TIMEOUT_MS = 8000;
+
 async function fetchRandomQuote() {
-  const response = await fetch("https://zenquotes.io/api/random");
-  if (!response.ok) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), QUOTE_FETCH_TIMEOUT_MS);
 
-  const data = await response.json();
-  const entry = Array.isArray(data) ? data[0] : null;
-  if (!entry || typeof entry.q !== "string" || typeof entry.a !== "string") return null;
-  // When rate-limited, ZenQuotes responds 200 OK with a placeholder quote
-  // attributed to itself rather than an HTTP error — treat that as a miss.
-  if (entry.a.trim().toLowerCase() === "zenquotes.io") return null;
-  if (!isQuoteAllowed(entry.q)) return null;
+  try {
+    const response = await fetch("https://zenquotes.io/api/random", { signal: controller.signal });
+    if (!response.ok) return null;
 
-  return { text: entry.q, author: entry.a };
+    const data = await response.json();
+    const entry = Array.isArray(data) ? data[0] : null;
+    if (!entry || typeof entry.q !== "string" || typeof entry.a !== "string") return null;
+    // When rate-limited, ZenQuotes responds 200 OK with a placeholder quote
+    // attributed to itself rather than an HTTP error — treat that as a miss.
+    if (entry.a.trim().toLowerCase() === "zenquotes.io") return null;
+    if (!isQuoteAllowed(entry.q)) return null;
+
+    return { text: entry.q, author: entry.a };
+  } catch (error) {
+    // Network error or timeout — fetch() has no built-in deadline, so without
+    // this a single stalled connection could hang the whole refresh forever.
+    console.error("[quote-of-day] fetchRandomQuote failed:", error);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function getQuoteOfTheDay(force = false) {
