@@ -273,15 +273,7 @@ function renderQuoteOfDayItem(quote) {
   author.className = "quote-of-day-author";
   author.textContent = `— ${quote.author}`;
 
-  // ZenQuotes' free tier requires a visible link back when used without an API key.
-  const attribution = document.createElement("a");
-  attribution.className = "quote-of-day-attribution";
-  attribution.href = "https://zenquotes.io/";
-  attribution.target = "_blank";
-  attribution.rel = "noopener noreferrer";
-  attribution.textContent = "via ZenQuotes.io";
-
-  quoteWidgetEl.append(label, text, author, attribution);
+  quoteWidgetEl.append(label, text, author);
 }
 
 const CURRENCY_SYMBOLS = { USD: "$", EUR: "€", JPY: "¥", AUD: "A$" };

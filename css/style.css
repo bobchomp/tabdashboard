@@ -269,20 +269,6 @@ body {
   text-align: right;
 }
 
-.quote-of-day-attribution {
-  display: block;
-  margin-top: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-dim);
-  text-align: right;
-  text-decoration: underline;
-}
-
-.quote-of-day-attribution:hover {
-  color: var(--text);
-}
-
 .currency-rate-row {
   display: flex;
   align-items: baseline;
